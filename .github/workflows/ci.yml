@@ -43,6 +43,8 @@ jobs:
     name: Demo screenshots
     runs-on: ubuntu-latest
     if: github.event_name != 'push'
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -65,7 +67,10 @@ jobs:
           npx playwright install --with-deps chromium
           (cd build/demo && python3 -m http.server 8080 >/dev/null 2>&1 &)
           sleep 2
-          node tool/screenshots.mjs http://localhost:8080 screenshots
+          mkdir -p screenshots
+          flutter analyze --no-fatal-infos --no-fatal-warnings > screenshots/analyze.txt 2>&1 || true
+          node tool/screenshots.mjs http://localhost:8080 screenshots 2>&1 | tee screenshots/log.txt
+          exit ${PIPESTATUS[0]}
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -73,6 +78,19 @@ jobs:
           name: screenshots
           path: screenshots
           retention-days: 14
+
+      # Also publish to a throwaway branch so the images can be linked from
+      # the PR without downloading the artifact.
+      - name: Publish to ci-screenshots branch
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          cd screenshots
+          git init -q -b ci-screenshots
+          git add -A
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -qm "Screenshots for ${GITHUB_SHA::7}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:ci-screenshots
 
   deploy:
     name: Deploy to task.praveendhra.com
