@@ -4,7 +4,7 @@
     "start_url": ".",
     "display": "standalone",
     "background_color": "#F7F7FB",
-    "theme_color": "#5B5BD6",
+    "theme_color": "#0676E0",
     "description": "Break work into steps and see where everything stands, synced across devices.",
     "orientation": "any",
     "prefer_related_applications": false,

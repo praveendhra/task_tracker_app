@@ -3,7 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'models/task.dart';
 
-const _seed = Color(0xFF5B5BD6);
+// Blue from the app icon.
+const _seed = Color(0xFF0676E0);
 
 ThemeData buildTheme(Brightness brightness) {
   final dark = brightness == Brightness.dark;
@@ -13,8 +14,7 @@ ThemeData buildTheme(Brightness brightness) {
     surface: dark ? const Color(0xFF111217) : const Color(0xFFF7F7FB),
   ).copyWith(
     // Keep the brand colour vivid instead of the tonal default.
-    primary: dark ? const Color(0xFFA5A6F6) : _seed,
-    tertiary: dark ? const Color(0xFFC4B5FD) : const Color(0xFF8B5CF6),
+    primary: dark ? const Color(0xFF6CB4FF) : _seed,
   );
 
   final base = ThemeData(
