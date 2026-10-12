@@ -1,0 +1,139 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Analyze, test & build web
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter --version
+      - run: flutter pub get
+      - run: flutter analyze --no-fatal-infos
+      - run: flutter test
+
+      - name: Build web (production)
+        run: flutter build web --release --base-href /
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web
+          path: build/web
+          retention-days: 14
+
+      # Preview of the production build for review, on a throwaway branch.
+      - name: Publish build to ci-web branch
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          cd build/web
+          git init -q -b ci-web
+          git add -A
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -qm "Web build for ${GITHUB_SHA::7}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:ci-web
+
+  screenshots:
+    name: Demo screenshots
+    runs-on: ubuntu-latest
+    if: github.event_name != 'push'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+      - name: Build web (demo data, no Firebase)
+        run: flutter build web --release --base-href / --dart-define=DEMO=true -o build/demo
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Capture screenshots
+        run: |
+          npm i --no-save playwright@1
+          npx playwright install --with-deps chromium
+          (cd build/demo && python3 -m http.server 8080 >/dev/null 2>&1 &)
+          sleep 2
+          mkdir -p screenshots
+          flutter analyze --no-fatal-infos --no-fatal-warnings > screenshots/analyze.txt 2>&1 || true
+          node tool/screenshots.mjs http://localhost:8080 screenshots 2>&1 | tee screenshots/log.txt
+          exit ${PIPESTATUS[0]}
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screenshots
+          path: screenshots
+          retention-days: 14
+
+      # Also publish to a throwaway branch so the images can be linked from
+      # the PR without downloading the artifact.
+      - name: Publish to ci-screenshots branch
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          cd screenshots
+          git init -q -b ci-screenshots
+          git add -A
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -qm "Screenshots for ${GITHUB_SHA::7}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:ci-screenshots
+
+  deploy:
+    name: Deploy to task.praveendhra.com
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: web
+          path: web
+
+      - name: Push build to task_tracker_live
+        env:
+          TOKEN: ${{ secrets.LIVE_REPO_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::notice::LIVE_REPO_TOKEN is not set, skipping deploy. See README."
+            exit 0
+          fi
+          git clone --depth 1 "https://x-access-token:${TOKEN}@github.com/praveendhra/task_tracker_live.git" live
+          cd live
+          # Keep repo metadata and the custom domain; replace the rest.
+          find . -mindepth 1 -maxdepth 1 ! -name .git ! -name .github ! -name CNAME ! -name README.md -exec rm -rf {} +
+          cp -R ../web/. .
+          touch .nojekyll
+          git add -A
+          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -m "Deploy ${GITHUB_SHA::7} from task_tracker_app"
+          git push origin HEAD:main
