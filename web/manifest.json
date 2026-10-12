@@ -1,12 +1,12 @@
 {
-    "name": "task_tracker_app",
-    "short_name": "task_tracker_app",
+    "name": "Task Tracker",
+    "short_name": "Tasks",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "background_color": "#F7F7FB",
+    "theme_color": "#5B5BD6",
+    "description": "Break work into steps and see where everything stands, synced across devices.",
+    "orientation": "any",
     "prefer_related_applications": false,
     "icons": [
         {

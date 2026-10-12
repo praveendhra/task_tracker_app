@@ -1,0 +1,31 @@
+rules_version = '2';
+
+// Each user can only touch their own profile and tasks.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function validTask(t) {
+      return t.keys().hasAll(['title', 'status', 'steps', 'archived'])
+        && t.title is string && t.title.size() <= 300
+        && t.status in [1, 2, 3]
+        && t.steps is list && t.steps.size() <= 200
+        && t.archived is bool
+        && (!('priority' in t) || t.priority in [0, 1, 2, 3])
+        && (!('tags' in t) || (t.tags is list && t.tags.size() <= 30))
+        && (!('description' in t) || (t.description is string && t.description.size() <= 20000));
+    }
+
+    match /users/{uid} {
+      allow read, write: if isOwner(uid);
+
+      match /tasks/{taskId} {
+        allow read, delete: if isOwner(uid);
+        allow create, update: if isOwner(uid) && validTask(request.resource.data);
+      }
+    }
+  }
+}

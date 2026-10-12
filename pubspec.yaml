@@ -1,10 +1,10 @@
 name: task_tracker_app
-description: "A new Flutter project."
+description: "Track tasks step by step, synced across devices."
 publish_to: 'none'
-version: 0.1.0
+version: 2.0.0+2
 
 environment:
-  sdk: '>=3.3.3 <4.0.0'
+  sdk: '>=3.6.0 <4.0.0'
 
 dependencies:
   cloud_firestore: ^5.4.4
@@ -13,13 +13,8 @@ dependencies:
   firebase_database: ^11.1.1
   flutter:
     sdk: flutter
-  flutter_slidable:
-     git:
-      url: https://github.com/letsar/flutter_slidable.git
-      ref: master
-  path_provider: ^2.1.4
+  google_fonts: ^6.2.1
   shared_preferences: ^2.2.3
-  uuid: ^4.5.1
 
 dev_dependencies:
   flutter_test:
@@ -30,7 +25,6 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/data.json
     - assets/logo.jpg
     - assets/icon/icon.png
 

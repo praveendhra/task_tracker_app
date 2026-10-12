@@ -1,0 +1,106 @@
+import 'dart:convert';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:task_tracker_app/app_controller.dart';
+import 'package:task_tracker_app/data/demo_backend.dart';
+import 'package:task_tracker_app/data/firebase_backend.dart';
+import 'package:task_tracker_app/models/task.dart';
+
+void main() {
+  group('Task', () {
+    Task withSteps(List<TaskStatus> statuses) {
+      final t = Task.blank().copyWith(title: 'T', steps: [
+        for (var i = 0; i < statuses.length; i++)
+          TaskStep(id: 's$i', title: 'Step $i', status: statuses[i]),
+      ]);
+      return t;
+    }
+
+    test('progress follows steps', () {
+      final t = withSteps([TaskStatus.done, TaskStatus.notStarted]);
+      expect(t.progress, 0.5);
+      expect(t.doneSteps, 1);
+    });
+
+    test('ticking the last step completes the task, unticking reopens it', () {
+      var t = withSteps([TaskStatus.done, TaskStatus.notStarted]);
+      t = t.withStep(t.steps[1].copyWith(status: TaskStatus.done));
+      expect(t.status, TaskStatus.done);
+      expect(t.completedAt, isNotNull);
+
+      t = t.withStep(t.steps[0].copyWith(status: TaskStatus.notStarted));
+      expect(t.status, TaskStatus.inProgress);
+      expect(t.completedAt, isNull);
+    });
+
+    test('current step falls back to the first open step', () {
+      final t = withSteps([TaskStatus.done, TaskStatus.inProgress, TaskStatus.notStarted]);
+      expect(t.currentStep?.id, 's1');
+      expect(t.copyWith(currentStepId: 's2').currentStep?.id, 's2');
+    });
+
+    test('overdue only when not done', () {
+      final yesterday = TaskDates.today().subtract(const Duration(days: 1));
+      final t = Task.blank().copyWith(dueDate: yesterday);
+      expect(t.isOverdue, isTrue);
+      expect(t.withStatus(TaskStatus.done).isOverdue, isFalse);
+    });
+
+    test('step round-trips through a map', () {
+      const s = TaskStep(id: 'a', title: 'Do it', note: 'n', status: TaskStatus.inProgress);
+      final back = TaskStep.fromMap(s.toMap());
+      expect(back.id, 'a');
+      expect(back.title, 'Do it');
+      expect(back.note, 'n');
+      expect(back.status, TaskStatus.inProgress);
+    });
+  });
+
+  group('legacy import', () {
+    test('maps the original JSON format', () {
+      final legacy = jsonDecode('''
+        {"task_name":"First Task","description":"Look at it","current_step":2,
+         "status":2,"archived":false,"id":"abc-123",
+         "steps":[
+           {"no":1,"content":"One","comment":"c1","status":3},
+           {"no":2,"content":"Two","comment":"c2","status":2},
+           {"no":3,"content":"Three","comment":"c3","status":1}]}
+      ''') as Map<String, dynamic>;
+      final t = legacyToTask(legacy);
+      expect(t.id, 'abc-123');
+      expect(t.title, 'First Task');
+      expect(t.status, TaskStatus.inProgress);
+      expect(t.steps.length, 3);
+      expect(t.steps.first.note, 'c1');
+      expect(t.steps.first.status, TaskStatus.done);
+      expect(t.currentStep?.title, 'Two');
+    });
+
+    test('tolerates missing fields', () {
+      final t = legacyToTask({'task_name': 'Bare', 'steps': []});
+      expect(t.title, 'Bare');
+      expect(t.steps, isEmpty);
+      expect(t.id, isNotEmpty);
+    });
+  });
+
+  group('AppController', () {
+    test('filters, search and status cycling on demo data', () async {
+      final app = AppController(
+        auth: DemoAuthService(),
+        repositoryFor: (_) => DemoTaskRepository(),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(app.tasksLoaded, isTrue);
+      expect(app.archivedTasks.length, 1);
+      expect(app.filtered(TaskFilter.done).every((t) => t.isDone), isTrue);
+      expect(app.search('ado pipelines').map((t) => t.id), contains('migrate'));
+
+      final sql = app.taskById('sql')!;
+      await app.cycleStatus(sql);
+      expect(app.taskById('sql')!.isDone, isTrue);
+      expect(app.taskById('sql')!.steps.every((s) => s.isDone), isTrue);
+      app.dispose();
+    });
+  });
+}
