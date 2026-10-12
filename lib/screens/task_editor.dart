@@ -238,6 +238,8 @@ class _TaskEditorState extends State<TaskEditor> {
             TextField(
               controller: _title,
               autofocus: _isNew,
+              minLines: 1,
+              maxLines: 3,
               textCapitalization: TextCapitalization.sentences,
               style: theme.textTheme.titleLarge,
               decoration: const InputDecoration(
@@ -294,7 +296,11 @@ class _TaskEditorState extends State<TaskEditor> {
                 for (final p in Priority.values)
                   ButtonSegment(
                     value: p,
-                    label: Text(p == Priority.none ? 'None' : p.label),
+                    label: Text(switch (p) {
+                      Priority.none => 'None',
+                      Priority.medium => 'Med',
+                      _ => p.label,
+                    }),
                     icon: p == Priority.none
                         ? null
                         : Icon(Icons.flag_rounded, color: scheme.priorityColor(p), size: 16),

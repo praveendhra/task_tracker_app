@@ -403,7 +403,7 @@ class _StatsRow extends StatelessWidget {
       Expanded(
         child: _StatTile(
           value: '${app.completedThisWeek}',
-          label: 'Done this week',
+          label: 'Done in 7 days',
           icon: Icons.task_alt_rounded,
           color: scheme.success,
           onTap: () => onFilter(TaskFilter.done),
@@ -508,7 +508,16 @@ class _FilterChips extends StatelessWidget {
         children: [
           for (final f in TaskFilter.values) ...[
             ChoiceChip(
-              label: Text('${_filterTitle(f)}  ${app.count(f)}'),
+              label: Row(mainAxisSize: MainAxisSize.min, children: [
+                Text(_filterTitle(f)),
+                const SizedBox(width: 6),
+                Text('${app.count(f)}',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: filter == f
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.muted)),
+              ]),
               selected: filter == f,
               showCheckmark: false,
               onSelected: (_) => onFilter(f),
