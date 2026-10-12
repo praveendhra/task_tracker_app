@@ -17,6 +17,8 @@ jobs:
   build:
     name: Analyze, test & build web
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -38,6 +40,18 @@ jobs:
           name: web
           path: build/web
           retention-days: 14
+
+      # Preview of the production build for review, on a throwaway branch.
+      - name: Publish build to ci-web branch
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          cd build/web
+          git init -q -b ci-web
+          git add -A
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -qm "Web build for ${GITHUB_SHA::7}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:ci-web
 
   screenshots:
     name: Demo screenshots
