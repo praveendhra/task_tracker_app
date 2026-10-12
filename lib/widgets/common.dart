@@ -10,23 +10,19 @@ class AppLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(size * 0.3),
-        gradient: LinearGradient(
+        gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            scheme.primary,
-            Color.lerp(scheme.primary, scheme.tertiary, 0.7)!,
-          ],
+          colors: [Color(0xFF5B5BD6), Color(0xFF8B5CF6)],
         ),
       ),
       child: Icon(Icons.check_rounded,
-          color: scheme.onPrimary, size: size * 0.62),
+          color: Colors.white, size: size * 0.62),
     );
   }
 }

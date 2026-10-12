@@ -351,8 +351,7 @@ class _TaskEditorState extends State<TaskEditor> {
               physics: const NeverScrollableScrollPhysics(),
               buildDefaultDragHandles: false,
               itemCount: _steps.length,
-              onReorder: (from, to) => setState(() {
-                if (to > from) to--;
+              onReorderItem: (from, to) => setState(() {
                 _steps.insert(to, _steps.removeAt(from));
                 _dirty = true;
               }),

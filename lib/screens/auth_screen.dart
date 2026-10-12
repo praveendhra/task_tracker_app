@@ -259,8 +259,7 @@ class _HeroPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final on = scheme.onPrimary;
+    const on = Colors.white;
     Widget point(IconData icon, String title, String body) => Padding(
           padding: const EdgeInsets.only(bottom: 22),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -292,13 +291,10 @@ class _HeroPanel extends StatelessWidget {
       padding: const EdgeInsets.all(48),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
-        gradient: LinearGradient(
+        gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            scheme.primary,
-            Color.lerp(scheme.primary, scheme.tertiary, 0.8)!,
-          ],
+          colors: [Color(0xFF5B5BD6), Color(0xFF8B5CF6)],
         ),
       ),
       child: Column(

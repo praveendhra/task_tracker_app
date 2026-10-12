@@ -7,8 +7,8 @@ const [base = 'http://localhost:8080', out = 'screenshots'] = process.argv.slice
 mkdirSync(out, { recursive: true });
 
 const viewports = {
-  phone: { width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
-  desktop: { width: 1440, height: 900, deviceScaleFactor: 1 },
+  phone: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
+  desktop: { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 },
 };
 
 const shots = [
