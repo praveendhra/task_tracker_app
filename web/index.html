@@ -8,12 +8,12 @@
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="description" content="Task Tracker: break work into steps, see where everything stands, synced across your devices.">
-  <meta name="theme-color" content="#5B5BD6">
+  <meta name="theme-color" content="#0676E0">
 
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Tasks">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="icon" type="image/png" href="favicon.png">
 
   <title>Task Tracker</title>
@@ -26,21 +26,16 @@
       position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
       transition: opacity .25s ease;
     }
-    #boot .mark {
-      width: 56px; height: 56px; border-radius: 17px;
-      background: linear-gradient(135deg, #5B5BD6, #8B5CF6);
-      display: flex; align-items: center; justify-content: center;
+    #boot img {
+      width: 64px; height: 64px;
       animation: pulse 1.2s ease-in-out infinite;
     }
-    #boot svg { width: 34px; height: 34px; }
     @keyframes pulse { 50% { transform: scale(.92); opacity: .85; } }
   </style>
 </head>
 <body>
   <div id="boot" aria-label="Loading Task Tracker">
-    <div class="mark">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
-    </div>
+    <img src="mark.png" alt="">
   </div>
   <script>
     // Fade out the HTML splash once Flutter has drawn its first frame.

@@ -294,14 +294,21 @@ class _HeroPanel extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF5B5BD6), Color(0xFF8B5CF6)],
+          colors: [Color(0xFF0563C9), Color(0xFF019BF0)],
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            Icon(Icons.check_circle_rounded, color: on, size: 28),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const AppLogo(size: 30),
+            ),
             const SizedBox(width: 10),
             Text('Task Tracker',
                 style: theme.textTheme.titleLarge?.copyWith(color: on)),

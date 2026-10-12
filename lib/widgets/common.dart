@@ -3,28 +3,19 @@ import 'package:flutter/material.dart';
 import '../models/task.dart';
 import '../theme.dart';
 
-/// The app mark: a gradient tile with a check.
+/// The app icon, cropped to the mark (assets/icon/mark.png).
 class AppLogo extends StatelessWidget {
   const AppLogo({super.key, this.size = 40});
   final double size;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(size * 0.3),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF5B5BD6), Color(0xFF8B5CF6)],
-        ),
-      ),
-      child: Icon(Icons.check_rounded,
-          color: Colors.white, size: size * 0.62),
-    );
-  }
+  Widget build(BuildContext context) => Image.asset(
+        'assets/icon/mark.png',
+        width: size,
+        height: size,
+        filterQuality: FilterQuality.medium,
+        semanticLabel: 'Task Tracker',
+      );
 }
 
 const _months = [

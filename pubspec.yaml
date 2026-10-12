@@ -27,6 +27,7 @@ flutter:
   assets:
     - assets/logo.jpg
     - assets/icon/icon.png
+    - assets/icon/mark.png
 
 flutter_launcher_icons:
   android: "launcher_icon"
