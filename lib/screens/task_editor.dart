@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../app_controller.dart';
 import '../models/task.dart';
@@ -29,9 +30,21 @@ Future<Task?> showTaskEditor(BuildContext context, Task task) {
 }
 
 class _StepDraft {
-  _StepDraft(this.step) : controller = TextEditingController(text: step.title);
+  _StepDraft(this.step)
+      : controller = TextEditingController(text: step.title),
+        note = TextEditingController(text: step.note),
+        showNote = step.note.isNotEmpty;
   final TaskStep step;
   final TextEditingController controller;
+  final TextEditingController note;
+  final FocusNode noteFocus = FocusNode();
+  bool showNote;
+
+  void dispose() {
+    controller.dispose();
+    note.dispose();
+    noteFocus.dispose();
+  }
 }
 
 class TaskEditor extends StatefulWidget {
@@ -78,7 +91,7 @@ class _TaskEditorState extends State<TaskEditor> {
     _newStep.dispose();
     _newStepFocus.dispose();
     for (final s in _steps) {
-      s.controller.dispose();
+      s.dispose();
     }
     super.dispose();
   }
@@ -92,6 +105,21 @@ class _TaskEditorState extends State<TaskEditor> {
     });
     _newStep.clear();
     _newStepFocus.requestFocus();
+  }
+
+  void _moveStep(int from, int to) {
+    if (to < 0 || to >= _steps.length) return;
+    setState(() {
+      _steps.insert(to, _steps.removeAt(from));
+      _dirty = true;
+    });
+  }
+
+  void _toggleNote(_StepDraft d) {
+    setState(() => d.showNote = !d.showNote);
+    if (d.showNote) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => d.noteFocus.requestFocus());
+    }
   }
 
   void _addTag(String raw) {
@@ -138,7 +166,8 @@ class _TaskEditorState extends State<TaskEditor> {
     final steps = [
       for (final d in _steps)
         if (d.controller.text.trim().isNotEmpty)
-          d.step.copyWith(title: d.controller.text.trim()),
+          d.step.copyWith(
+              title: d.controller.text.trim(), note: d.note.text.trim()),
     ];
     var next = base.copyWith(
       title: title,
@@ -177,6 +206,156 @@ class _TaskEditorState extends State<TaskEditor> {
     return ok ?? false;
   }
 
+  Widget _stepRow(BuildContext context, int i) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final d = _steps[i];
+    final hasNote = d.note.text.trim().isNotEmpty;
+    return Padding(
+      key: ValueKey(d.step.id),
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Container(
+        decoration: BoxDecoration(
+          color: theme.inputDecorationTheme.fillColor,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: theme.dividerTheme.color!),
+        ),
+        padding: const EdgeInsets.fromLTRB(0, 4, 4, 4),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [
+            ReorderableDragStartListener(
+              index: i,
+              child: MouseRegion(
+                cursor: SystemMouseCursors.grab,
+                child: Tooltip(
+                  message: 'Drag to reorder',
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 8, 2, 8),
+                    child: Icon(Icons.drag_indicator_rounded, color: scheme.muted),
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(
+              width: 22,
+              child: Text('${i + 1}',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.labelLarge?.copyWith(color: scheme.muted)),
+            ),
+            Expanded(
+              child: TextField(
+                controller: d.controller,
+                onChanged: (_) => _dirty = true,
+                minLines: 1,
+                maxLines: 4,
+                keyboardType: TextInputType.text,
+                textInputAction: TextInputAction.done,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(
+                  isDense: true,
+                  hintText: 'Step',
+                  filled: false,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                ),
+              ),
+            ),
+            IconButton(
+              tooltip: d.showNote ? 'Hide note' : (hasNote ? 'Show note' : 'Add note'),
+              onPressed: () => _toggleNote(d),
+              icon: Icon(
+                hasNote ? Icons.sticky_note_2_rounded : Icons.sticky_note_2_outlined,
+                color: hasNote || d.showNote ? scheme.primary : scheme.muted,
+              ),
+            ),
+            PopupMenuButton<String>(
+              tooltip: 'More',
+              icon: Icon(Icons.more_vert_rounded, color: scheme.muted),
+              onSelected: (v) {
+                switch (v) {
+                  case 'up':
+                    _moveStep(i, i - 1);
+                  case 'down':
+                    _moveStep(i, i + 1);
+                  case 'top':
+                    _moveStep(i, 0);
+                  case 'remove':
+                    setState(() {
+                      _steps.removeAt(i).dispose();
+                      _dirty = true;
+                    });
+                }
+              },
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                    value: 'up',
+                    enabled: i > 0,
+                    child: const ListTile(
+                        dense: true,
+                        leading: Icon(Icons.arrow_upward_rounded),
+                        title: Text('Move up'))),
+                PopupMenuItem(
+                    value: 'down',
+                    enabled: i < _steps.length - 1,
+                    child: const ListTile(
+                        dense: true,
+                        leading: Icon(Icons.arrow_downward_rounded),
+                        title: Text('Move down'))),
+                PopupMenuItem(
+                    value: 'top',
+                    enabled: i > 0,
+                    child: const ListTile(
+                        dense: true,
+                        leading: Icon(Icons.vertical_align_top_rounded),
+                        title: Text('Move to top'))),
+                const PopupMenuDivider(),
+                PopupMenuItem(
+                    value: 'remove',
+                    child: ListTile(
+                        dense: true,
+                        leading: Icon(Icons.delete_outline_rounded, color: scheme.danger),
+                        title: Text('Remove step', style: TextStyle(color: scheme.danger)))),
+              ],
+            ),
+          ]),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 180),
+            alignment: Alignment.topCenter,
+            child: d.showNote
+                ? Padding(
+                    padding: const EdgeInsets.fromLTRB(56, 0, 12, 8),
+                    child: TextField(
+                      controller: d.note,
+                      focusNode: d.noteFocus,
+                      minLines: 1,
+                      maxLines: 5,
+                      onChanged: (_) => setState(() => _dirty = true),
+                      textCapitalization: TextCapitalization.sentences,
+                      style: theme.textTheme.bodyMedium,
+                      decoration: InputDecoration(
+                        isDense: true,
+                        hintText: 'Note: blockers, links, who you are waiting on…',
+                        fillColor: scheme.subtle,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none,
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                  )
+                : const SizedBox(width: double.infinity),
+          ),
+        ]),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -206,7 +385,14 @@ class _TaskEditorState extends State<TaskEditor> {
     final customDue =
         _due != null && !presetDates.contains(TaskDates.dateOnly(_due!));
 
-    return PopScope(
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.enter, control: true): _save,
+        const SingleActivator(LogicalKeyboardKey.enter, meta: true): _save,
+        const SingleActivator(LogicalKeyboardKey.keyS, control: true): _save,
+        const SingleActivator(LogicalKeyboardKey.keyS, meta: true): _save,
+      },
+      child: PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
@@ -348,85 +534,49 @@ class _TaskEditorState extends State<TaskEditor> {
             ]),
             const SizedBox(height: 28),
             SectionLabel('Steps',
-                trailing: _steps.isEmpty
+                trailing: _steps.length < 2
                     ? null
-                    : Text('Drag to reorder',
+                    : Text('Drag ⠿ or use ⋮ to reorder',
                         style: theme.textTheme.labelSmall?.copyWith(color: scheme.muted))),
             ReorderableListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               buildDefaultDragHandles: false,
               itemCount: _steps.length,
-              onReorderItem: (from, to) => setState(() {
-                _steps.insert(to, _steps.removeAt(from));
-                _dirty = true;
-              }),
-              itemBuilder: (context, i) {
-                final d = _steps[i];
-                return Padding(
-                  key: ValueKey(d.step.id),
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(children: [
-                    ReorderableDragStartListener(
-                      index: i,
-                      child: MouseRegion(
-                        cursor: SystemMouseCursors.grab,
-                        child: Padding(
-                          padding: const EdgeInsets.all(8),
-                          child: Icon(Icons.drag_indicator_rounded, color: scheme.muted),
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: TextField(
-                        controller: d.controller,
-                        onChanged: (_) => _dirty = true,
-                        textCapitalization: TextCapitalization.sentences,
-                        decoration: InputDecoration(
-                          isDense: true,
-                          prefixIcon: Padding(
-                            padding: const EdgeInsets.only(left: 12, right: 8),
-                            child: Text('${i + 1}',
-                                style: theme.textTheme.labelLarge
-                                    ?.copyWith(color: scheme.muted)),
-                          ),
-                          prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: 'Remove step',
-                      icon: Icon(Icons.remove_circle_outline_rounded, color: scheme.muted),
-                      onPressed: () => setState(() {
-                        _steps.removeAt(i).controller.dispose();
-                        _dirty = true;
-                      }),
-                    ),
-                  ]),
-                );
-              },
+              onReorderItem: (from, to) => _moveStep(from, to),
+              proxyDecorator: (child, _, __) => Material(
+                elevation: 6,
+                borderRadius: BorderRadius.circular(14),
+                child: child,
+              ),
+              itemBuilder: (context, i) => _stepRow(context, i),
             ),
-            Row(children: [
-              const SizedBox(width: 40),
-              Expanded(
-                child: TextField(
-                  controller: _newStep,
-                  focusNode: _newStepFocus,
-                  textCapitalization: TextCapitalization.sentences,
-                  textInputAction: TextInputAction.done,
-                  onSubmitted: (_) => _addStep(),
-                  decoration: InputDecoration(
-                    hintText: _steps.isEmpty ? 'First step' : 'Next step',
-                    isDense: true,
-                    prefixIcon: Icon(Icons.add_rounded, color: scheme.primary),
-                  ),
+            TextField(
+              controller: _newStep,
+              focusNode: _newStepFocus,
+              textCapitalization: TextCapitalization.sentences,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _addStep(),
+              decoration: InputDecoration(
+                hintText: _steps.isEmpty ? 'Add the first step' : 'Add another step',
+                prefixIcon: Icon(Icons.add_rounded, color: scheme.primary),
+                suffixIcon: IconButton(
+                  tooltip: 'Add step',
+                  icon: const Icon(Icons.keyboard_return_rounded),
+                  onPressed: _addStep,
                 ),
               ),
-              const SizedBox(width: 48),
-            ]),
+            ),
+            if (_steps.isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8, left: 4),
+                child: Text('Press Enter to add each step. You can add notes and reorder them right here.',
+                    style: theme.textTheme.bodySmall?.copyWith(color: scheme.muted)),
+              ),
           ],
         ),
       ),
+    ),
     );
   }
 }

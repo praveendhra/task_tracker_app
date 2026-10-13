@@ -11,30 +11,37 @@ const viewports = {
   desktop: { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 },
 };
 
+const q = encodeURIComponent('Rotate SQL creds fri #work !high');
+// [viewport, theme, query, name]
 const shots = [
-  ['phone', 'light', ''],
-  ['phone', 'dark', ''],
-  ['phone', 'light', 'screen=detail'],
-  ['phone', 'dark', 'screen=detail'],
-  ['phone', 'light', 'screen=editor'],
-  ['phone', 'light', 'screen=auth'],
-  ['phone', 'light', 'screen=archive'],
-  ['desktop', 'light', 'screen=detail'],
-  ['desktop', 'dark', 'screen=detail'],
-  ['desktop', 'light', 'screen=auth'],
-  ['desktop', 'light', 'screen=editor'],
+  ['phone', 'light', '', 'home'],
+  ['phone', 'dark', '', 'home'],
+  ['phone', 'light', 'screen=detail', 'detail'],
+  ['phone', 'dark', 'screen=detail', 'detail'],
+  ['phone', 'light', 'screen=editor', 'editor'],
+  ['phone', 'light', 'screen=new', 'new'],
+  ['phone', 'light', `screen=quick&q=${q}`, 'quick'],
+  ['phone', 'dark', `screen=quick&q=${q}`, 'quick'],
+  ['phone', 'light', 'screen=auth', 'auth'],
+  ['phone', 'light', 'screen=archive', 'archive'],
+  ['desktop', 'light', 'screen=detail', 'detail'],
+  ['desktop', 'dark', 'screen=detail', 'detail'],
+  ['desktop', 'light', 'screen=auth', 'auth'],
+  ['desktop', 'light', 'screen=editor', 'editor'],
+  ['desktop', 'light', `screen=quick&q=${q}`, 'quick'],
+  ['desktop', 'light', 'screen=shortcuts', 'shortcuts'],
 ];
 
 const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'] });
 let failed = 0;
-for (const [vp, theme, query] of shots) {
+for (const [vp, theme, query, label] of shots) {
   const ctx = await browser.newContext({ ...viewports[vp], colorScheme: theme });
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
   const q = [query, `theme=${theme}`].filter(Boolean).join('&');
-  const name = `${vp}-${theme}-${(query.split('=')[1] || 'home')}`;
+  const name = `${vp}-${theme}-${label}`;
   try {
     await page.goto(`${base}/?${q}`, { waitUntil: 'load' });
     await page.waitForFunction(() => !document.getElementById('boot'), null, { timeout: 45000 });
