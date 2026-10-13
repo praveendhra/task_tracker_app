@@ -46,7 +46,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'editor' when task != null:
         showTaskEditor(context, task);
       case 'new':
-        _newTaskFull();
+        _newTask();
       case 'quick':
         showQuickAdd(context, initialText: demoParams['q'] ?? '');
       case 'shortcuts':
@@ -77,14 +77,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   bool get _wide => MediaQuery.sizeOf(context).width >= _wideBreakpoint;
 
-  /// Quick add (one line with dates, #tags, !priority).
-  Future<void> _newTask() async {
+  /// Quick add: one line with dates, #tags, !priority.
+  Future<void> _quickAdd() async {
     final created = await showQuickAdd(context);
     if (created != null && mounted) _afterCreate(created);
   }
 
-  /// Straight to the full editor (steps, notes, everything).
-  Future<void> _newTaskFull() async {
+  /// The default: full editor with steps, notes, everything.
+  Future<void> _newTask() async {
     final created = await showTaskEditor(context, Task.blank());
     if (created != null && mounted) _afterCreate(created);
   }
@@ -170,7 +170,9 @@ class _HomeScreenState extends State<HomeScreen> {
     if (event.character == '?') {
       showShortcutsHelp(context);
     } else if (key == LogicalKeyboardKey.keyN) {
-      keys.isShiftPressed ? _newTaskFull() : _newTask();
+      _newTask();
+    } else if (key == LogicalKeyboardKey.keyQ) {
+      _quickAdd();
     } else if (key == LogicalKeyboardKey.slash) {
       _openSearch();
     } else if (key == LogicalKeyboardKey.keyJ || key == LogicalKeyboardKey.arrowDown) {
@@ -282,14 +284,27 @@ class _HomeScreenState extends State<HomeScreen> {
         onKeyEvent: _onKey,
         child: Scaffold(
           body: SafeArea(bottom: false, child: list),
-          floatingActionButton: GestureDetector(
-            onLongPress: _newTaskFull,
-            child: FloatingActionButton.extended(
-              tooltip: 'Quick add · long-press for full editor',
-              onPressed: _newTask,
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('New task'),
-            ),
+          floatingActionButton: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              FloatingActionButton.small(
+                heroTag: 'quick-add',
+                tooltip: 'Quick add: type one line',
+                onPressed: _quickAdd,
+                backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+                foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
+                child: const Icon(Icons.text_fields_rounded),
+              ),
+              const SizedBox(height: 12),
+              FloatingActionButton.extended(
+                heroTag: 'new-task',
+                tooltip: 'New task with steps',
+                onPressed: _newTask,
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('New task'),
+              ),
+            ],
           ),
         ),
       );
@@ -313,7 +328,7 @@ class _HomeScreenState extends State<HomeScreen> {
               }),
               onTag: (t) => setState(() => _tag = t),
               onNew: _newTask,
-              onNewFull: _newTaskFull,
+              onQuickAdd: _quickAdd,
               onSearch: _openSearch,
               onArchive: _openArchive,
             ),
@@ -766,7 +781,7 @@ class _Sidebar extends StatelessWidget {
     required this.onFilter,
     required this.onTag,
     required this.onNew,
-    required this.onNewFull,
+    required this.onQuickAdd,
     required this.onSearch,
     required this.onArchive,
   });
@@ -776,7 +791,7 @@ class _Sidebar extends StatelessWidget {
   final ValueChanged<TaskFilter> onFilter;
   final ValueChanged<String?> onTag;
   final VoidCallback onNew;
-  final VoidCallback onNewFull;
+  final VoidCallback onQuickAdd;
   final VoidCallback onSearch;
   final VoidCallback onArchive;
 
@@ -836,7 +851,7 @@ class _Sidebar extends StatelessWidget {
         Row(children: [
           Expanded(
             child: Tooltip(
-              message: 'Quick add (N)',
+              message: 'New task with steps (N)',
               child: FilledButton.icon(
                 onPressed: onNew,
                 icon: const Icon(Icons.add_rounded),
@@ -846,9 +861,9 @@ class _Sidebar extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           IconButton.filledTonal(
-            tooltip: 'New task with steps & details (Shift+N)',
-            onPressed: onNewFull,
-            icon: const Icon(Icons.playlist_add_rounded),
+            tooltip: 'Quick add: type one line (Q)',
+            onPressed: onQuickAdd,
+            icon: const Icon(Icons.text_fields_rounded),
             style: IconButton.styleFrom(
               minimumSize: const Size(48, 48),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -1103,8 +1118,8 @@ class _SwipeableTask extends StatelessWidget {
 }
 
 const _shortcuts = <(String, String)>[
-  ('N', 'Quick add'),
-  ('Shift + N', 'New task with steps & details'),
+  ('N', 'New task (with steps)'),
+  ('Q', 'Quick add (one line)'),
   ('/  or  Ctrl/⌘ + K', 'Search'),
   ('J / K  or  ↓ / ↑', 'Move through tasks'),
   ('Enter', 'Open selected task'),
