@@ -28,6 +28,18 @@ class FirebaseAuthService implements AuthService {
       _auth.signInWithEmailAndPassword(email: email.trim(), password: password));
 
   @override
+  Future<void> signInWithGoogle() => _guard(() async {
+        final provider = GoogleAuthProvider()
+          ..addScope('email')
+          ..setCustomParameters({'prompt': 'select_account'});
+        if (kIsWeb) {
+          await _auth.signInWithPopup(provider);
+        } else {
+          await _auth.signInWithProvider(provider);
+        }
+      });
+
+  @override
   Future<void> signUp(String name, String email, String password) =>
       _guard(() async {
         final cred = await _auth.createUserWithEmailAndPassword(
@@ -70,6 +82,19 @@ class FirebaseAuthService implements AuthService {
         'too-many-requests' =>
           'Too many attempts. Wait a minute and try again.',
         'network-request-failed' => 'No connection. Check your internet.',
+        'popup-closed-by-user' ||
+        'cancelled-popup-request' ||
+        'web-context-canceled' ||
+        'canceled' =>
+          'Google sign-in was cancelled.',
+        'popup-blocked' =>
+          'Your browser blocked the Google sign-in window. Allow pop-ups for this site and try again.',
+        'account-exists-with-different-credential' =>
+          'This email already has an account. Sign in with your password instead.',
+        'operation-not-allowed' =>
+          'Google sign-in is not enabled for this app yet.',
+        'unauthorized-domain' =>
+          'Google sign-in is not allowed on this web address yet.',
         _ => 'Something went wrong ($code). Please try again.',
       };
 }
