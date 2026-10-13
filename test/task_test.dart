@@ -46,6 +46,25 @@ void main() {
       expect(t.withStatus(TaskStatus.done).isOverdue, isFalse);
     });
 
+    test('step due date round-trips as a plain date', () {
+      final s = TaskStep(id: 'a', title: 'x', dueDate: DateTime(2026, 10, 16, 15, 30));
+      final m = s.toMap();
+      expect(m['dueDate'], '2026-10-16');
+      expect(TaskStep.fromMap(m).dueDate, DateTime(2026, 10, 16));
+      expect(TaskStep.fromMap({'id': 'b', 'title': 'y'}).dueDate, isNull);
+      expect(s.copyWith(clearDueDate: true).dueDate, isNull);
+    });
+
+    test('overdue steps are flagged on the task', () {
+      final yesterday = TaskDates.today().subtract(const Duration(days: 1));
+      final t = Task.blank().copyWith(steps: [
+        TaskStep(id: 'a', title: 'late', dueDate: yesterday),
+        TaskStep(id: 'b', title: 'done late', dueDate: yesterday, status: TaskStatus.done),
+      ]);
+      expect(t.hasOverdueStep, isTrue);
+      expect(t.datedOpenSteps.map((s) => s.id), ['a']);
+    });
+
     test('step round-trips through a map', () {
       const s = TaskStep(id: 'a', title: 'Do it', note: 'n', status: TaskStatus.inProgress);
       final back = TaskStep.fromMap(s.toMap());

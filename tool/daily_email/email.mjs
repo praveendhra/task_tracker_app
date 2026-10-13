@@ -57,6 +57,8 @@ export function normaliseTasks(rawTasks, timeZone) {
       null;
     const due = toDate(t.dueDate);
     const completed = toDate(t.completedAt);
+    // Step dates are stored as "YYYY-MM-DD" already.
+    const stepDue = (st) => (typeof st.dueDate === 'string' && /^\d{4}-\d{2}-\d{2}/.test(st.dueDate) ? st.dueDate.slice(0, 10) : null);
     return {
       title: (t.title || 'Untitled task').trim(),
       status: Number(t.status) || 1,
@@ -68,6 +70,10 @@ export function normaliseTasks(rawTasks, timeZone) {
       stepsDone: steps.filter((s) => s.status === 3).length,
       stepsTotal: steps.length,
       currentStep: current ? (current.title || '').trim() : null,
+      currentStepDue: current ? stepDue(current) : null,
+      openSteps: steps
+        .filter((st) => st.status !== 3)
+        .map((st) => ({ title: (st.title || '').trim(), due: stepDue(st), status: Number(st.status) || 1 })),
     };
   });
 }
@@ -91,9 +97,18 @@ export function buildDigest(tasks, today) {
   const weekEnd = addDays(today, 7);
   const upcoming = take(open.filter((t) => t.due && t.due > today && t.due <= weekEnd).sort(byDue));
 
+  // Steps that are overdue or due today, from any open task (high priority first).
+  const stepsDue = open
+    .flatMap((t) => t.openSteps
+      .filter((st) => st.due && st.due <= today)
+      .map((st) => ({ ...st, task: t.title, priority: t.priority })))
+    .sort((a, b) => a.due.localeCompare(b.due) || b.priority - a.priority);
+
   return {
     today,
     openCount: open.length,
+    stepsDue,
+    stepsOverdueCount: stepsDue.filter((st) => st.due < today).length,
     high,
     overdue,
     dueToday,
@@ -111,6 +126,7 @@ export function subjectFor(d) {
   if (d.highCount) bits.push(`${d.highCount} high priority`);
   if (d.overdueCount) bits.push(`${d.overdueCount} overdue`);
   if (d.dueTodayCount) bits.push(`${d.dueTodayCount} due today`);
+  if (d.stepsDue.length) bits.push(`${d.stepsDue.length} step${d.stepsDue.length === 1 ? '' : 's'} due`);
   if (!bits.length) bits.push(`${d.openCount} open task${d.openCount === 1 ? '' : 's'}`);
   return `Your day: ${bits.join(', ')}`;
 }
@@ -139,14 +155,34 @@ function taskRow(t, today) {
     ? `<div style="margin-top:6px;height:5px;background:${C.line};border-radius:4px;overflow:hidden;"><div style="height:5px;width:${Math.round((t.stepsDone / t.stepsTotal) * 100)}%;background:${C.brand};"></div></div>
        <div style="font-size:12px;color:${C.muted};margin-top:3px;">${t.stepsDone} of ${t.stepsTotal} step${t.stepsTotal === 1 ? '' : 's'}</div>`
     : '';
+  const stepDue = t.currentStepDue
+    ? ` <span style="font-weight:600;color:${t.currentStepDue < today ? C.red : t.currentStepDue === today ? C.amber : C.muted};">&middot; ${esc(dueLabel(t.currentStepDue, today))}</span>`
+    : '';
   const step = t.currentStep
-    ? `<div style="font-size:13px;color:${C.muted};margin-top:2px;">&#8627; ${esc(t.currentStep)}</div>`
+    ? `<div style="font-size:13px;color:${C.muted};margin-top:2px;">&#8627; ${esc(t.currentStep)}${stepDue}</div>`
     : '';
   return `<tr><td style="padding:12px 0;border-top:1px solid ${C.line};">
     <div style="font-size:15px;font-weight:600;color:${C.text};">${esc(t.title)}</div>
     ${step}
     <div style="margin-top:6px;">${meta.join('')}</div>
     ${progress}
+  </td></tr>`;
+}
+
+function stepRow(st, today) {
+  const color = st.due < today ? C.red : C.amber;
+  return `<tr><td style="padding:10px 0;border-top:1px solid ${C.line};">
+    <div style="font-size:14px;font-weight:600;color:${C.text};">${esc(st.title || 'Untitled step')}</div>
+    <div style="font-size:13px;color:${C.muted};margin-top:2px;">in ${esc(st.task)}${st.priority === 3 ? ` ${pill('High', C.red)}` : ''}</div>
+    <div style="margin-top:4px;">${pill(dueLabel(st.due, today), color)}${st.status === 2 ? pill('In progress', C.blue) : ''}</div>
+  </td></tr>`;
+}
+
+function stepSection(steps, today) {
+  if (!steps.length) return '';
+  return `<tr><td style="padding:20px 24px 4px;">
+    <div style="font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${C.amber};">Steps due &middot; ${steps.length}</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:6px;">${steps.map((st) => stepRow(st, today)).join('')}</table>
   </td></tr>`;
 }
 
@@ -187,6 +223,7 @@ export function renderHtml(d, { name, appUrl }) {
   ${section('High priority', C.red, d.high, d.today)}
   ${section('Overdue', C.red, d.overdue, d.today)}
   ${section('Due today', C.amber, d.dueToday, d.today)}
+  ${stepSection(d.stepsDue, d.today)}
   ${section('In progress', C.blue, d.inProgress, d.today)}
   ${section('Coming up this week', C.muted, d.upcoming, d.today)}
   <tr><td align="center" style="padding:24px;">
@@ -209,13 +246,18 @@ export function renderText(d, { name, appUrl }) {
       const meta = [t.priority === 3 ? 'High' : '', t.due ? dueLabel(t.due, d.today) : '', t.stepsTotal ? `${t.stepsDone}/${t.stepsTotal} step${t.stepsTotal === 1 ? '' : 's'}` : '']
         .filter(Boolean).join(' · ');
       lines.push(`- ${t.title}${meta ? ` (${meta})` : ''}`);
-      if (t.currentStep) lines.push(`    -> ${t.currentStep}`);
+      if (t.currentStep) lines.push(`    -> ${t.currentStep}${t.currentStepDue ? ` (${dueLabel(t.currentStepDue, d.today)})` : ''}`);
     }
     lines.push('');
   };
   sec('High priority', d.high);
   sec('Overdue', d.overdue);
   sec('Due today', d.dueToday);
+  if (d.stepsDue.length) {
+    lines.push(`STEPS DUE (${d.stepsDue.length})`);
+    for (const st of d.stepsDue) lines.push(`- ${st.title} (in ${st.task}; ${dueLabel(st.due, d.today)})`);
+    lines.push('');
+  }
   sec('In progress', d.inProgress);
   sec('Coming up this week', d.upcoming);
   lines.push(`Open Task Tracker: ${appUrl}`, '', 'Turn this email off in Task Tracker > Settings.');

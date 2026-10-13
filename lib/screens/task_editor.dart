@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../app_controller.dart';
+import '../models/quick_add.dart';
 import '../models/task.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
@@ -33,8 +34,10 @@ class _StepDraft {
   _StepDraft(this.step)
       : controller = TextEditingController(text: step.title),
         note = TextEditingController(text: step.note),
-        showNote = step.note.isNotEmpty;
+        showNote = step.note.isNotEmpty,
+        due = step.dueDate;
   final TaskStep step;
+  DateTime? due;
   final TextEditingController controller;
   final TextEditingController note;
   final FocusNode noteFocus = FocusNode();
@@ -99,8 +102,10 @@ class _TaskEditorState extends State<TaskEditor> {
   void _addStep() {
     final text = _newStep.text.trim();
     if (text.isEmpty) return;
+    final parsed = parseStepText(text);
     setState(() {
-      _steps.add(_StepDraft(TaskStep(id: newId(), title: text)));
+      _steps.add(_StepDraft(
+          TaskStep(id: newId(), title: parsed.title, dueDate: parsed.dueDate)));
       _dirty = true;
     });
     _newStep.clear();
@@ -113,6 +118,23 @@ class _TaskEditorState extends State<TaskEditor> {
       _steps.insert(to, _steps.removeAt(from));
       _dirty = true;
     });
+  }
+
+  Future<void> _pickStepDate(_StepDraft d) async {
+    final today = TaskDates.today();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: d.due ?? _due ?? today,
+      firstDate: DateTime(today.year - 2),
+      lastDate: DateTime(today.year + 5),
+      helpText: 'Step due date',
+    );
+    if (picked != null) {
+      setState(() {
+        d.due = picked;
+        _dirty = true;
+      });
+    }
   }
 
   void _toggleNote(_StepDraft d) {
@@ -167,7 +189,10 @@ class _TaskEditorState extends State<TaskEditor> {
       for (final d in _steps)
         if (d.controller.text.trim().isNotEmpty)
           d.step.copyWith(
-              title: d.controller.text.trim(), note: d.note.text.trim()),
+              title: d.controller.text.trim(),
+              note: d.note.text.trim(),
+              dueDate: d.due,
+              clearDueDate: d.due == null),
     ];
     var next = base.copyWith(
       title: title,
@@ -264,14 +289,25 @@ class _TaskEditorState extends State<TaskEditor> {
             ),
             IconButton(
               tooltip: d.showNote ? 'Hide note' : (hasNote ? 'Show note' : 'Add note'),
+              visualDensity: VisualDensity.compact,
               onPressed: () => _toggleNote(d),
               icon: Icon(
                 hasNote ? Icons.sticky_note_2_rounded : Icons.sticky_note_2_outlined,
                 color: hasNote || d.showNote ? scheme.primary : scheme.muted,
               ),
             ),
+            IconButton(
+              tooltip: d.due == null ? 'Set a due date' : 'Change due date',
+              visualDensity: VisualDensity.compact,
+              onPressed: () => _pickStepDate(d),
+              icon: Icon(
+                d.due == null ? Icons.event_outlined : Icons.event_rounded,
+                color: d.due == null ? scheme.muted : scheme.primary,
+              ),
+            ),
             PopupMenuButton<String>(
               tooltip: 'More',
+              padding: EdgeInsets.zero,
               icon: Icon(Icons.more_vert_rounded, color: scheme.muted),
               onSelected: (v) {
                 switch (v) {
@@ -281,6 +317,11 @@ class _TaskEditorState extends State<TaskEditor> {
                     _moveStep(i, i + 1);
                   case 'top':
                     _moveStep(i, 0);
+                  case 'clear-date':
+                    setState(() {
+                      d.due = null;
+                      _dirty = true;
+                    });
                   case 'remove':
                     setState(() {
                       _steps.removeAt(i).dispose();
@@ -310,6 +351,13 @@ class _TaskEditorState extends State<TaskEditor> {
                         dense: true,
                         leading: Icon(Icons.vertical_align_top_rounded),
                         title: Text('Move to top'))),
+                if (d.due != null)
+                  const PopupMenuItem(
+                      value: 'clear-date',
+                      child: ListTile(
+                          dense: true,
+                          leading: Icon(Icons.event_busy_outlined),
+                          title: Text('Remove due date'))),
                 const PopupMenuDivider(),
                 PopupMenuItem(
                     value: 'remove',
@@ -320,6 +368,21 @@ class _TaskEditorState extends State<TaskEditor> {
               ],
             ),
           ]),
+          if (d.due != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(60, 0, 12, 6),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: _StepDueChip(
+                  due: d.due!,
+                  onTap: () => _pickStepDate(d),
+                  onClear: () => setState(() {
+                    d.due = null;
+                    _dirty = true;
+                  }),
+                ),
+              ),
+            ),
           AnimatedSize(
             duration: const Duration(milliseconds: 180),
             alignment: Alignment.topCenter,
@@ -570,13 +633,43 @@ class _TaskEditorState extends State<TaskEditor> {
             if (_steps.isEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 8, left: 4),
-                child: Text('Press Enter to add each step. You can add notes and reorder them right here.',
+                child: Text('Press Enter to add each step. Add a note, a due date (or type one, like "fri") and reorder right here.',
                     style: theme.textTheme.bodySmall?.copyWith(color: scheme.muted)),
               ),
           ],
         ),
       ),
     ),
+    );
+  }
+}
+
+
+class _StepDueChip extends StatelessWidget {
+  const _StepDueChip({required this.due, required this.onTap, required this.onClear});
+  final DateTime due;
+  final VoidCallback onTap;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final today = TaskDates.today();
+    final color = due.isBefore(today)
+        ? scheme.danger
+        : TaskDates.dateOnly(due) == today
+            ? scheme.warning
+            : scheme.primary;
+    return InputChip(
+      avatar: Icon(Icons.event_rounded, size: 16, color: color),
+      label: Text('Due ${formatDue(due)}'),
+      labelStyle: Theme.of(context).textTheme.labelMedium?.copyWith(color: color),
+      side: BorderSide(color: color.withValues(alpha: 0.4)),
+      backgroundColor: color.withValues(alpha: 0.08),
+      visualDensity: VisualDensity.compact,
+      onPressed: onTap,
+      onDeleted: onClear,
+      deleteButtonTooltipMessage: 'Remove due date',
     );
   }
 }

@@ -582,7 +582,7 @@ class _StatsRow extends StatelessWidget {
     final app = AppScope.of(context);
     final scheme = Theme.of(context).colorScheme;
     final live = app.liveTasks;
-    final overdue = live.where((t) => t.isOverdue).length;
+    final overdue = live.where((t) => t.isOverdue || t.hasOverdueStep).length;
     final inProgress = live.where((t) => t.status == TaskStatus.inProgress).length;
     return Row(children: [
       Expanded(

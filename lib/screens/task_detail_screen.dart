@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app_controller.dart';
+import '../models/quick_add.dart';
 import '../models/task.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
@@ -360,6 +361,10 @@ class _StepTile extends StatelessWidget {
                       if (isCurrent)
                         Pill(label: 'Current', color: scheme.primary),
                     ]),
+                    if (step.dueDate != null) ...[
+                      const SizedBox(height: 6),
+                      StepDuePill(step),
+                    ],
                     if (step.note.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(step.note,
@@ -382,6 +387,7 @@ Future<void> _showStepSheet(BuildContext context, Task task, TaskStep step) {
   final title = TextEditingController(text: step.title);
   final note = TextEditingController(text: step.note);
   var status = step.status;
+  DateTime? due = step.dueDate;
 
   return showModalBottomSheet<void>(
     context: context,
@@ -393,7 +399,11 @@ Future<void> _showStepSheet(BuildContext context, Task task, TaskStep step) {
           final latest = app.taskById(task.id);
           if (latest == null) return;
           final next = latest.withStep(step.copyWith(
-              title: title.text.trim(), note: note.text.trim(), status: status));
+              title: title.text.trim(),
+              note: note.text.trim(),
+              status: status,
+              dueDate: due,
+              clearDueDate: due == null));
           app.save(next);
         }
 
@@ -423,6 +433,33 @@ Future<void> _showStepSheet(BuildContext context, Task task, TaskStep step) {
                   alignLabelWithHint: true,
                 ),
               ),
+              const SizedBox(height: 12),
+              Row(children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      final today = TaskDates.today();
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: due ?? today,
+                        firstDate: DateTime(today.year - 2),
+                        lastDate: DateTime(today.year + 5),
+                        helpText: 'Step due date',
+                      );
+                      if (picked != null) setSheet(() => due = picked);
+                    },
+                    icon: const Icon(Icons.event_outlined),
+                    label: Text(due == null ? 'Add due date' : 'Due ${formatDue(due!)}'),
+                    style: OutlinedButton.styleFrom(alignment: Alignment.centerLeft),
+                  ),
+                ),
+                if (due != null)
+                  IconButton(
+                    tooltip: 'Remove due date',
+                    onPressed: () => setSheet(() => due = null),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+              ]),
               const SizedBox(height: 16),
               SegmentedButton<TaskStatus>(
                 segments: [
@@ -505,7 +542,8 @@ class _AddStepFieldState extends State<_AddStepField> {
     if (text.isEmpty) return;
     final app = AppScope.read(context);
     final latest = app.taskById(widget.task.id) ?? widget.task;
-    final step = TaskStep(id: newId(), title: text);
+    final parsed = parseStepText(text);
+    final step = TaskStep(id: newId(), title: parsed.title, dueDate: parsed.dueDate);
     var next = latest.copyWith(steps: [...latest.steps, step]);
     // A finished task with a new open step is no longer finished.
     if (next.isDone) next = next.withStatus(TaskStatus.inProgress);
