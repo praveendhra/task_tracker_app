@@ -848,7 +848,7 @@ class _Sidebar extends StatelessWidget {
           IconButton.filledTonal(
             tooltip: 'New task with steps & details (Shift+N)',
             onPressed: onNewFull,
-            icon: const Icon(Icons.tune_rounded),
+            icon: const Icon(Icons.playlist_add_rounded),
             style: IconButton.styleFrom(
               minimumSize: const Size(48, 48),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

@@ -227,7 +227,7 @@ class _QuickAddPanelState extends State<QuickAddPanel> {
             Row(children: [
               TextButton.icon(
                 onPressed: _details,
-                icon: const Icon(Icons.tune_rounded, size: 18),
+                icon: const Icon(Icons.playlist_add_rounded, size: 18),
                 label: const Text('Add steps & details'),
               ),
               const Spacer(),
