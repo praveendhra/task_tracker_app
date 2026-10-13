@@ -35,6 +35,25 @@ Steps are embedded in the task document so a task and its steps always change to
 
 Version 1 kept every task for a user in a single JSON string at `users/{uid}/data` in the Realtime Database, so every edit rewrote the whole list and two devices could overwrite each other. On first sign-in, v2 copies that list into Firestore (`FirestoreTaskRepository.prepare`), marks the account as imported, and shows how many tasks moved. The Realtime Database data is left untouched.
 
+## Daily email
+
+Users can turn on a morning summary under **Settings & daily email** (account menu). It lists high-priority tasks first, then overdue, due today, in progress and the coming week, and is sent at the chosen hour in the user's time zone (detected from the browser). No email goes out on a day with nothing open.
+
+`.github/workflows/daily-email.yml` runs `tool/daily_email/send.mjs` every hour. It reads opted-in users from Firestore with the Admin SDK, sends through [Resend](https://resend.com), and records `lastDailyEmail` so each user gets one email a day. GitHub can start scheduled runs late, so anything within 4 hours of the chosen time still sends.
+
+Repository secrets it needs (Settings → Secrets and variables → Actions):
+
+| Secret | Where to get it |
+|---|---|
+| `FIREBASE_SERVICE_ACCOUNT` | Firebase console → Project settings → Service accounts → Generate new private key. Paste the whole JSON file. |
+| `RESEND_API_KEY` | resend.com → API Keys → Create (Sending access). |
+
+The sender defaults to `Task Tracker <tasks@mail.praveendhra.com>` (the domain is already verified in Resend). Override it with an Actions **variable** named `MAIL_FROM`.
+
+To test: Actions → Daily email → Run workflow, put your email in *force_email* (and tick *dry_run* to only log it). Preview the template locally with `cd tool/daily_email && npm i && node preview.mjs`.
+
+GitHub pauses scheduled workflows in repos with no activity for 60 days; any push re-enables it.
+
 ## Develop
 
 ```bash

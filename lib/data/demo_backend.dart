@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../models/task.dart';
+import '../models/user_settings.dart';
 import 'repository.dart';
 
 /// In-memory backend used when the app is built with
@@ -85,6 +86,15 @@ class DemoTaskRepository extends TaskRepository {
     _tasks[task.id] = task.copyWith(updatedAt: DateTime.now());
     _controller.add(_snapshot);
   }
+
+  UserSettings _settings =
+      const UserSettings(dailyEmail: true, timezone: 'America/New_York');
+
+  @override
+  Future<UserSettings> loadSettings() async => _settings;
+
+  @override
+  Future<void> saveSettings(UserSettings settings) async => _settings = settings;
 
   @override
   Future<void> delete(String taskId) async {
