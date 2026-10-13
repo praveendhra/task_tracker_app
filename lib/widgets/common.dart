@@ -167,6 +167,30 @@ class DuePill extends StatelessWidget {
   }
 }
 
+class StepDuePill extends StatelessWidget {
+  const StepDuePill(this.step, {super.key});
+  final TaskStep step;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final due = step.dueDate;
+    if (due == null) return const SizedBox.shrink();
+    final color = step.isDone
+        ? scheme.muted
+        : step.isOverdue
+            ? scheme.danger
+            : step.isDueToday
+                ? scheme.warning
+                : scheme.muted;
+    return Pill(
+      label: step.isOverdue ? 'Overdue · ${formatDue(due)}' : 'Due ${formatDue(due)}',
+      color: color,
+      icon: step.isOverdue ? Icons.error_outline_rounded : Icons.event_rounded,
+    );
+  }
+}
+
 class PriorityFlag extends StatelessWidget {
   const PriorityFlag(this.priority, {super.key, this.showLabel = false});
   final Priority priority;
@@ -338,6 +362,20 @@ class TaskCard extends StatelessWidget {
                               ?.copyWith(color: scheme.muted),
                         ),
                       ),
+                      if (current.dueDate != null) ...[
+                        const SizedBox(width: 6),
+                        Text(
+                          formatDue(current.dueDate!),
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: current.isOverdue
+                                ? scheme.danger
+                                : current.isDueToday
+                                    ? scheme.warning
+                                    : scheme.muted,
+                          ),
+                        ),
+                      ],
                     ]),
                   ] else if (task.description.isNotEmpty) ...[
                     const SizedBox(height: 4),
@@ -358,10 +396,16 @@ class TaskCard extends StatelessWidget {
                               ?.copyWith(color: scheme.muted)),
                     ]),
                   ],
-                  if (task.dueDate != null || task.tags.isNotEmpty) ...[
+                  if (task.dueDate != null || task.tags.isNotEmpty || (!done && task.hasOverdueStep)) ...[
                     const SizedBox(height: 10),
                     Wrap(spacing: 6, runSpacing: 6, children: [
                       if (task.dueDate != null && !done) DuePill(task),
+                      if (!done && task.hasOverdueStep)
+                        Pill(
+                          label: 'Step overdue',
+                          color: scheme.danger,
+                          icon: Icons.error_outline_rounded,
+                        ),
                       for (final tag in task.tags.take(3))
                         Pill(label: '#$tag', color: scheme.primary),
                     ]),

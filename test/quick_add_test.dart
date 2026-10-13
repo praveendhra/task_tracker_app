@@ -74,4 +74,14 @@ void main() {
     final texts = r.matches.map((m) => s.substring(m.start, m.end)).toList();
     expect(texts, containsAll(['tomorrow', '#release']));
   });
+
+  test('step text: only the date is pulled out', () {
+    final r = parseStepText('Draft runbook #ops fri', now: now);
+    expect(r.title, 'Draft runbook #ops');
+    expect(r.dueDate, DateTime(2026, 10, 16));
+    final plain = parseStepText('Call the vendor', now: now);
+    expect(plain.title, 'Call the vendor');
+    expect(plain.dueDate, isNull);
+    expect(parseStepText('tomorrow', now: now).title, 'tomorrow');
+  });
 }

@@ -156,10 +156,15 @@ class AppController extends ChangeNotifier {
     if (tag != null) list = list.where((t) => t.tags.contains(tag));
     list = switch (f) {
       TaskFilter.active => list.where((t) => !t.isDone),
+      // A task counts as due when it, or any of its open steps, is due.
       TaskFilter.today => list.where((t) =>
-          !t.isDone && t.dueDate != null && t.dueDate!.isBefore(tomorrow)),
+          !t.isDone &&
+          ((t.dueDate != null && t.dueDate!.isBefore(tomorrow)) ||
+              t.datedOpenSteps.any((st) => st.dueDate!.isBefore(tomorrow)))),
       TaskFilter.upcoming => list.where((t) =>
-          !t.isDone && t.dueDate != null && !t.dueDate!.isBefore(tomorrow)),
+          !t.isDone &&
+          ((t.dueDate != null && !t.dueDate!.isBefore(tomorrow)) ||
+              t.datedOpenSteps.any((st) => !st.dueDate!.isBefore(tomorrow)))),
       TaskFilter.done => list.where((t) => t.isDone),
       TaskFilter.all => list,
     };

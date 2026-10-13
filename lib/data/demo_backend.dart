@@ -106,8 +106,14 @@ class DemoTaskRepository extends TaskRepository {
     final now = DateTime.now();
     final today = TaskDates.today();
     DateTime ago(int h) => now.subtract(Duration(hours: h));
-    TaskStep s(String id, String title, TaskStatus st, [String note = '']) =>
-        TaskStep(id: id, title: title, note: note, status: st);
+    TaskStep s(String id, String title, TaskStatus st, [String note = '', int? dueIn]) =>
+        TaskStep(
+          id: id,
+          title: title,
+          note: note,
+          status: st,
+          dueDate: dueIn == null ? null : today.add(Duration(days: dueIn)),
+        );
     const d = TaskStatus.done, p = TaskStatus.inProgress, n = TaskStatus.notStarted;
 
     return [
@@ -125,8 +131,8 @@ class DemoTaskRepository extends TaskRepository {
           s('m1', 'Inventory the ADO pipelines', d, '14 pipelines, 3 unused'),
           s('m2', 'Port build pipelines', d, 'Reusable workflow for .NET'),
           s('m3', 'Port release pipelines with approvals', p,
-              'Waiting on environment owners'),
-          s('m4', 'Cut over and archive ADO', n),
+              'Waiting on environment owners', 1),
+          s('m4', 'Cut over and archive ADO', n, '', 2),
         ],
         currentStepId: 'm3',
         createdAt: ago(240),
@@ -141,7 +147,7 @@ class DemoTaskRepository extends TaskRepository {
         dueDate: today.subtract(const Duration(days: 1)),
         tags: const ['work', 'security'],
         steps: [
-          s('q1', 'Generate new secrets in Key Vault', n),
+          s('q1', 'Generate new secrets in Key Vault', n, '', -1),
           s('q2', 'Update app settings', n),
           s('q3', 'Verify connections and revoke old logins', n),
         ],
@@ -158,7 +164,7 @@ class DemoTaskRepository extends TaskRepository {
         tags: const ['personal'],
         steps: [
           s('p1', 'Pick the three projects to feature', d),
-          s('p2', 'Write project blurbs', p, 'Momentum done, two to go'),
+          s('p2', 'Write project blurbs', p, 'Momentum done, two to go', 0),
           s('p3', 'Ship it', n),
         ],
         currentStepId: 'p2',

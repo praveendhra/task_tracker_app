@@ -196,3 +196,27 @@ DateTime? _monthDay(DateTime today, int month, int day) {
   if (d.isBefore(today)) d = DateTime(today.year + 1, month, day);
   return d;
 }
+
+/// For step text: pulls out just a date ("Draft runbook fri" → "Draft runbook",
+/// Friday). Tags and priorities stay as typed, since steps don't have them.
+({String title, DateTime? dueDate}) parseStepText(String input, {DateTime? now}) {
+  final r = parseQuickAdd(input, now: now);
+  final dates = r.matches.where((m) => m.kind == QuickAddKind.date).toList();
+  if (r.dueDate == null || dates.isEmpty) return (title: input.trim(), dueDate: null);
+  final buf = StringBuffer();
+  var pos = 0;
+  for (final m in dates) {
+    buf.write(input.substring(pos, m.start));
+    pos = m.end;
+  }
+  buf.write(input.substring(pos));
+  final title = buf
+      .toString()
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim()
+      .replaceAll(RegExp(r'\s+(on|by|due)$', caseSensitive: false), '')
+      .trim();
+  // A step that is nothing but a date keeps its text.
+  if (title.isEmpty) return (title: input.trim(), dueDate: null);
+  return (title: title, dueDate: r.dueDate);
+}

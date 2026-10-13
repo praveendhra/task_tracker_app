@@ -61,6 +61,7 @@ class TaskStep {
     required this.title,
     this.note = '',
     this.status = TaskStatus.notStarted,
+    this.dueDate,
   });
 
   final String id;
@@ -68,14 +69,30 @@ class TaskStep {
   final String note;
   final TaskStatus status;
 
+  /// Optional, date only (no time).
+  final DateTime? dueDate;
+
   bool get isDone => status == TaskStatus.done;
 
-  TaskStep copyWith({String? title, String? note, TaskStatus? status}) =>
+  bool get isOverdue =>
+      dueDate != null && !isDone && dueDate!.isBefore(TaskDates.today());
+
+  bool get isDueToday =>
+      dueDate != null && !isDone && TaskDates.dateOnly(dueDate!) == TaskDates.today();
+
+  TaskStep copyWith({
+    String? title,
+    String? note,
+    TaskStatus? status,
+    DateTime? dueDate,
+    bool clearDueDate = false,
+  }) =>
       TaskStep(
         id: id,
         title: title ?? this.title,
         note: note ?? this.note,
         status: status ?? this.status,
+        dueDate: clearDueDate ? null : (dueDate ?? this.dueDate),
       );
 
   Map<String, dynamic> toMap() => {
@@ -83,6 +100,8 @@ class TaskStep {
         'title': title,
         'note': note,
         'status': status.code,
+        // Stored as "YYYY-MM-DD" so it means the same calendar day everywhere.
+        'dueDate': dueDate == null ? null : TaskDates.ymd(dueDate!),
       };
 
   factory TaskStep.fromMap(Map<String, dynamic> m) => TaskStep(
@@ -90,6 +109,7 @@ class TaskStep {
         title: (m['title'] as String?) ?? '',
         note: (m['note'] as String?) ?? '',
         status: TaskStatus.fromCode(m['status']),
+        dueDate: TaskDates.parseYmd(m['dueDate']),
       );
 }
 
@@ -156,6 +176,13 @@ class Task {
     }
     return null;
   }
+
+  /// Open steps with a date, soonest first.
+  List<TaskStep> get datedOpenSteps =>
+      steps.where((s) => s.dueDate != null && !s.isDone).toList()
+        ..sort((a, b) => a.dueDate!.compareTo(b.dueDate!));
+
+  bool get hasOverdueStep => steps.any((s) => s.isOverdue);
 
   bool get isOverdue {
     if (dueDate == null || isDone) return false;
@@ -261,4 +288,15 @@ class TaskDates {
   }
 
   static DateTime dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+
+  static String ymd(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  static DateTime? parseYmd(Object? v) {
+    if (v is DateTime) return dateOnly(v);
+    if (v is! String || v.length < 10) return null;
+    final parts = v.substring(0, 10).split('-').map(int.tryParse).toList();
+    if (parts.length != 3 || parts.any((p) => p == null)) return null;
+    return DateTime(parts[0]!, parts[1]!, parts[2]!);
+  }
 }
