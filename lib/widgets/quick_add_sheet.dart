@@ -182,6 +182,9 @@ class _QuickAddPanelState extends State<QuickAddPanel> {
             TextField(
               controller: _c,
               autofocus: true,
+              minLines: 1,
+              maxLines: 3,
+              keyboardType: TextInputType.text,
               textCapitalization: TextCapitalization.sentences,
               textInputAction: TextInputAction.done,
               onSubmitted: (_) => _add(),

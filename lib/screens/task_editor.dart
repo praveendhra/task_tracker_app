@@ -246,6 +246,10 @@ class _TaskEditorState extends State<TaskEditor> {
               child: TextField(
                 controller: d.controller,
                 onChanged: (_) => _dirty = true,
+                minLines: 1,
+                maxLines: 4,
+                keyboardType: TextInputType.text,
+                textInputAction: TextInputAction.done,
                 textCapitalization: TextCapitalization.sentences,
                 decoration: const InputDecoration(
                   isDense: true,
@@ -547,24 +551,28 @@ class _TaskEditorState extends State<TaskEditor> {
               ),
               itemBuilder: (context, i) => _stepRow(context, i),
             ),
-            Row(children: [
-              const SizedBox(width: 40),
-              Expanded(
-                child: TextField(
-                  controller: _newStep,
-                  focusNode: _newStepFocus,
-                  textCapitalization: TextCapitalization.sentences,
-                  textInputAction: TextInputAction.done,
-                  onSubmitted: (_) => _addStep(),
-                  decoration: InputDecoration(
-                    hintText: _steps.isEmpty ? 'First step' : 'Next step',
-                    isDense: true,
-                    prefixIcon: Icon(Icons.add_rounded, color: scheme.primary),
-                  ),
+            TextField(
+              controller: _newStep,
+              focusNode: _newStepFocus,
+              textCapitalization: TextCapitalization.sentences,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _addStep(),
+              decoration: InputDecoration(
+                hintText: _steps.isEmpty ? 'Add the first step' : 'Add another step',
+                prefixIcon: Icon(Icons.add_rounded, color: scheme.primary),
+                suffixIcon: IconButton(
+                  tooltip: 'Add step',
+                  icon: const Icon(Icons.keyboard_return_rounded),
+                  onPressed: _addStep,
                 ),
               ),
-              const SizedBox(width: 48),
-            ]),
+            ),
+            if (_steps.isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8, left: 4),
+                child: Text('Press Enter to add each step. You can add notes and reorder them right here.',
+                    style: theme.textTheme.bodySmall?.copyWith(color: scheme.muted)),
+              ),
           ],
         ),
       ),
