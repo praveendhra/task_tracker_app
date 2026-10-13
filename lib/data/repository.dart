@@ -28,6 +28,9 @@ abstract class AuthService {
   Stream<AppUser?> get userChanges;
   AppUser? get currentUser;
   Future<void> signIn(String email, String password);
+
+  /// Google sign-in. Creates the account on first use.
+  Future<void> signInWithGoogle();
   Future<void> signUp(String name, String email, String password);
   Future<void> sendPasswordReset(String email);
   Future<void> updateDisplayName(String name);

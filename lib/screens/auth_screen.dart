@@ -52,6 +52,25 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
+  Future<void> _google() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await AppScope.read(context).auth.signInWithGoogle();
+    } on AuthFailure catch (e) {
+      // Closing the Google window isn't an error worth shouting about.
+      if (mounted && !e.message.contains('cancelled')) {
+        setState(() => _error = e.message);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _error = 'Google sign-in failed. Please try again.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _forgotPassword() async {
     final controller = TextEditingController(text: _email.text);
     final email = await showDialog<String>(
@@ -129,6 +148,30 @@ class _AuthScreenState extends State<AuthScreen> {
                   style: theme.textTheme.bodyLarge?.copyWith(color: scheme.muted),
                 ),
                 const SizedBox(height: 28),
+                OutlinedButton(
+                  onPressed: _busy ? null : _google,
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 52),
+                    backgroundColor: theme.inputDecorationTheme.fillColor,
+                    foregroundColor: scheme.onSurface,
+                  ),
+                  child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    const GoogleLogo(size: 20),
+                    const SizedBox(width: 12),
+                    Text('Continue with Google', style: theme.textTheme.labelLarge),
+                  ]),
+                ),
+                const SizedBox(height: 20),
+                Row(children: [
+                  const Expanded(child: Divider()),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text(_signUp ? 'or sign up with email' : 'or use email',
+                        style: theme.textTheme.labelMedium?.copyWith(color: scheme.muted)),
+                  ),
+                  const Expanded(child: Divider()),
+                ]),
+                const SizedBox(height: 20),
                 AnimatedSize(
                   duration: const Duration(milliseconds: 200),
                   child: _signUp
@@ -329,4 +372,43 @@ class _HeroPanel extends StatelessWidget {
       ),
     );
   }
+}
+
+
+/// Google's four-colour "G", drawn so no image asset is needed.
+class GoogleLogo extends StatelessWidget {
+  const GoogleLogo({super.key, this.size = 20});
+  final double size;
+
+  @override
+  Widget build(BuildContext context) =>
+      CustomPaint(size: Size.square(size), painter: _GooglePainter());
+}
+
+class _GooglePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = size.width;
+    final stroke = s * 0.2;
+    final rect = Rect.fromCircle(
+        center: Offset(s / 2, s / 2), radius: (s - stroke) / 2);
+    Paint arc(Color c) => Paint()
+      ..color = c
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke;
+    const deg = 3.14159265 / 180;
+    // Angles are clockwise from 3 o'clock.
+    canvas.drawArc(rect, -40 * deg, -100 * deg, false, arc(const Color(0xFFEA4335))); // red, top
+    canvas.drawArc(rect, -140 * deg, -90 * deg, false, arc(const Color(0xFFFBBC05))); // yellow, left
+    canvas.drawArc(rect, 130 * deg, -90 * deg, false, arc(const Color(0xFF34A853))); // green, bottom
+    canvas.drawArc(rect, 40 * deg, -40 * deg, false, arc(const Color(0xFF4285F4))); // blue, right
+    // The bar of the G.
+    canvas.drawRect(
+      Rect.fromLTWH(s / 2, s / 2 - stroke / 2, s / 2 - stroke * 0.05, stroke),
+      Paint()..color = const Color(0xFF4285F4),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

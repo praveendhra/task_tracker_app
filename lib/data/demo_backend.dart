@@ -40,6 +40,12 @@ class DemoAuthService implements AuthService {
   }
 
   @override
+  Future<void> signInWithGoogle() async {
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    _set(_demoUser);
+  }
+
+  @override
   Future<void> signUp(String name, String email, String password) async {
     await Future<void>.delayed(const Duration(milliseconds: 400));
     _set(AppUser(uid: 'demo', email: email, displayName: name));
