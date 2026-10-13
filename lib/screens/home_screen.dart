@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../app_controller.dart';
 import '../config.dart';
 import '../models/task.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../widgets/quick_add_sheet.dart';
 import 'archive_screen.dart';
 import 'search_screen.dart';
 import 'task_detail_screen.dart';
@@ -44,7 +46,11 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'editor' when task != null:
         showTaskEditor(context, task);
       case 'new':
-        _newTask();
+        _newTaskFull();
+      case 'quick':
+        showQuickAdd(context, initialText: demoParams['q'] ?? '');
+      case 'shortcuts':
+        showShortcutsHelp(context);
       case 'archive':
         _openArchive();
       case 'search':
@@ -71,9 +77,159 @@ class _HomeScreenState extends State<HomeScreen> {
 
   bool get _wide => MediaQuery.sizeOf(context).width >= _wideBreakpoint;
 
+  /// Quick add (one line with dates, #tags, !priority).
   Future<void> _newTask() async {
+    final created = await showQuickAdd(context);
+    if (created != null && mounted) _afterCreate(created);
+  }
+
+  /// Straight to the full editor (steps, notes, everything).
+  Future<void> _newTaskFull() async {
     final created = await showTaskEditor(context, Task.blank());
-    if (created != null && _wide) setState(() => _selectedId = created.id);
+    if (created != null && mounted) _afterCreate(created);
+  }
+
+  void _afterCreate(Task t) {
+    if (_wide) {
+      setState(() => _selectedId = t.id);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Added "${t.title}"'),
+        action: SnackBarAction(label: 'Open', onPressed: () => _open(t)),
+      ));
+    }
+  }
+
+  // ---- keyboard ------------------------------------------------------------
+
+  final Map<String, GlobalKey> _itemKeys = {};
+  GlobalKey _keyFor(String id) => _itemKeys.putIfAbsent(id, GlobalKey.new);
+
+  List<Task> get _visible =>
+      AppScope.read(context).filtered(_filter, tag: _tag);
+
+  Task? get _selected {
+    final id = _selectedId;
+    return id == null ? null : AppScope.read(context).taskById(id);
+  }
+
+  void _moveSelection(int delta) {
+    final list = _visible;
+    if (list.isEmpty) return;
+    final i = list.indexWhere((t) => t.id == _selectedId);
+    final next = i < 0
+        ? (delta > 0 ? 0 : list.length - 1)
+        : (i + delta).clamp(0, list.length - 1);
+    final id = list[next].id;
+    setState(() => _selectedId = id);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _itemKeys[id]?.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(ctx,
+            alignmentPolicy: delta > 0
+                ? ScrollPositionAlignmentPolicy.keepVisibleAtEnd
+                : ScrollPositionAlignmentPolicy.keepVisibleAtStart,
+            duration: const Duration(milliseconds: 120));
+      }
+    });
+  }
+
+  void _setFilter(TaskFilter f) => setState(() {
+        _filter = f;
+        _tag = null;
+      });
+
+  KeyEventResult _onKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return KeyEventResult.ignored;
+    }
+    // Never steal keys from a text field (e.g. "Add a step" in the detail pane).
+    final focused = FocusManager.instance.primaryFocus?.context;
+    if (focused != null &&
+        (focused.widget is EditableText ||
+            focused.findAncestorWidgetOfExactType<EditableText>() != null)) {
+      return KeyEventResult.ignored;
+    }
+    // Only act when this screen is on top (no dialog, sheet or pushed page).
+    if (ModalRoute.of(context)?.isCurrent != true) return KeyEventResult.ignored;
+
+    final keys = HardwareKeyboard.instance;
+    final mod = keys.isControlPressed || keys.isMetaPressed;
+    final key = event.logicalKey;
+    final app = AppScope.read(context);
+    final sel = _selected;
+
+    if (mod && key == LogicalKeyboardKey.keyK) {
+      _openSearch();
+      return KeyEventResult.handled;
+    }
+    if (mod || keys.isAltPressed) return KeyEventResult.ignored;
+
+    final digit = key.keyId - LogicalKeyboardKey.digit1.keyId;
+
+    if (event.character == '?') {
+      showShortcutsHelp(context);
+    } else if (key == LogicalKeyboardKey.keyN) {
+      keys.isShiftPressed ? _newTaskFull() : _newTask();
+    } else if (key == LogicalKeyboardKey.slash) {
+      _openSearch();
+    } else if (key == LogicalKeyboardKey.keyJ || key == LogicalKeyboardKey.arrowDown) {
+      _moveSelection(1);
+    } else if (key == LogicalKeyboardKey.keyK || key == LogicalKeyboardKey.arrowUp) {
+      _moveSelection(-1);
+    } else if (key == LogicalKeyboardKey.escape) {
+      if (_selectedId == null) return KeyEventResult.ignored;
+      setState(() => _selectedId = null);
+    } else if (digit >= 0 && digit < TaskFilter.values.length) {
+      _setFilter(TaskFilter.values[digit]);
+    } else if (sel == null) {
+      return KeyEventResult.ignored;
+    } else if (key == LogicalKeyboardKey.enter || key == LogicalKeyboardKey.keyO) {
+      if (!_wide) _open(sel);
+    } else if (key == LogicalKeyboardKey.keyX || key == LogicalKeyboardKey.space) {
+      _toggleDone(sel);
+    } else if (key == LogicalKeyboardKey.keyE) {
+      showTaskEditor(context, sel);
+    } else if (key == LogicalKeyboardKey.keyA) {
+      _archive(sel);
+    } else if (key == LogicalKeyboardKey.delete || key == LogicalKeyboardKey.backspace) {
+      confirmDelete(context, sel).then((ok) {
+        if (ok) {
+          setState(() => _selectedId = null);
+          app.delete(sel.id);
+        }
+      });
+    } else {
+      return KeyEventResult.ignored;
+    }
+    return KeyEventResult.handled;
+  }
+
+  // ---- actions shared by swipe and keyboard ---------------------------------
+
+  void _toggleDone(Task t) {
+    final app = AppScope.read(context);
+    final before = t;
+    app.cycleStatus(t);
+    final nowDone = !before.isDone;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text(nowDone ? 'Marked done' : 'Reopened'),
+        action: SnackBarAction(label: 'Undo', onPressed: () => app.save(before)),
+      ));
+  }
+
+  void _archive(Task t) {
+    final app = AppScope.read(context);
+    app.setArchived(t, true);
+    if (_selectedId == t.id) setState(() => _selectedId = null);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: const Text('Archived'),
+        action: SnackBarAction(label: 'Undo', onPressed: () => app.setArchived(t, false)),
+      ));
   }
 
   void _open(Task t) {
@@ -104,9 +260,15 @@ class _HomeScreenState extends State<HomeScreen> {
       loaded: app.tasksLoaded,
       filter: _filter,
       tag: _tag,
-      selectedId: _wide ? _selectedId : null,
-      onOpen: _open,
+      selectedId: _selectedId,
+      onOpen: (t) {
+        if (!_wide) setState(() => _selectedId = null);
+        _open(t);
+      },
       onNew: _newTask,
+      onToggleDone: _toggleDone,
+      onArchiveTask: _archive,
+      keyFor: _keyFor,
       onFilter: (f) => setState(() => _filter = f),
       onTag: (t) => setState(() => _tag = t),
       onSearch: _openSearch,
@@ -115,18 +277,29 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     if (!_wide) {
-      return Scaffold(
-        body: SafeArea(bottom: false, child: list),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: _newTask,
-          icon: const Icon(Icons.add_rounded),
-          label: const Text('New task'),
+      return Focus(
+        autofocus: true,
+        onKeyEvent: _onKey,
+        child: Scaffold(
+          body: SafeArea(bottom: false, child: list),
+          floatingActionButton: GestureDetector(
+            onLongPress: _newTaskFull,
+            child: FloatingActionButton.extended(
+              tooltip: 'Quick add · long-press for full editor',
+              onPressed: _newTask,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('New task'),
+            ),
+          ),
         ),
       );
     }
 
     final selected = _selectedId == null ? null : app.taskById(_selectedId!);
-    return Scaffold(
+    return Focus(
+      autofocus: true,
+      onKeyEvent: _onKey,
+      child: Scaffold(
       body: SafeArea(
         child: Row(children: [
           SizedBox(
@@ -140,6 +313,7 @@ class _HomeScreenState extends State<HomeScreen> {
               }),
               onTag: (t) => setState(() => _tag = t),
               onNew: _newTask,
+              onNewFull: _newTaskFull,
               onSearch: _openSearch,
               onArchive: _openArchive,
             ),
@@ -163,6 +337,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ]),
       ),
+      ),
     );
   }
 }
@@ -178,6 +353,9 @@ class _TaskList extends StatelessWidget {
     required this.selectedId,
     required this.onOpen,
     required this.onNew,
+    required this.onToggleDone,
+    required this.onArchiveTask,
+    required this.keyFor,
     required this.onFilter,
     required this.onTag,
     required this.onSearch,
@@ -192,6 +370,9 @@ class _TaskList extends StatelessWidget {
   final String? selectedId;
   final ValueChanged<Task> onOpen;
   final VoidCallback onNew;
+  final ValueChanged<Task> onToggleDone;
+  final ValueChanged<Task> onArchiveTask;
+  final GlobalKey Function(String id) keyFor;
   final ValueChanged<TaskFilter> onFilter;
   final ValueChanged<String?> onTag;
   final VoidCallback onSearch;
@@ -279,12 +460,18 @@ class _TaskList extends StatelessWidget {
             separatorBuilder: (_, __) => const SizedBox(height: 10),
             itemBuilder: (context, i) {
               final t = tasks[i];
-              return TaskCard(
+              return _SwipeableTask(
                 key: ValueKey(t.id),
                 task: t,
-                selected: t.id == selectedId,
-                onTap: () => onOpen(t),
-                onToggle: () => app.cycleStatus(t),
+                onDone: () => onToggleDone(t),
+                onArchive: () => onArchiveTask(t),
+                child: TaskCard(
+                  key: keyFor(t.id),
+                  task: t,
+                  selected: t.id == selectedId,
+                  onTap: () => onOpen(t),
+                  onToggle: () => onToggleDone(t),
+                ),
               );
             },
           ),
@@ -579,6 +766,7 @@ class _Sidebar extends StatelessWidget {
     required this.onFilter,
     required this.onTag,
     required this.onNew,
+    required this.onNewFull,
     required this.onSearch,
     required this.onArchive,
   });
@@ -588,6 +776,7 @@ class _Sidebar extends StatelessWidget {
   final ValueChanged<TaskFilter> onFilter;
   final ValueChanged<String?> onTag;
   final VoidCallback onNew;
+  final VoidCallback onNewFull;
   final VoidCallback onSearch;
   final VoidCallback onArchive;
 
@@ -644,11 +833,28 @@ class _Sidebar extends StatelessWidget {
             AccountButton(onArchive: onArchive, compact: true),
           ]),
         ),
-        FilledButton.icon(
-          onPressed: onNew,
-          icon: const Icon(Icons.add_rounded),
-          label: const Text('New task'),
-        ),
+        Row(children: [
+          Expanded(
+            child: Tooltip(
+              message: 'Quick add (N)',
+              child: FilledButton.icon(
+                onPressed: onNew,
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('New task'),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          IconButton.filledTonal(
+            tooltip: 'New task with steps & details (Shift+N)',
+            onPressed: onNewFull,
+            icon: const Icon(Icons.tune_rounded),
+            style: IconButton.styleFrom(
+              minimumSize: const Size(48, 48),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ]),
         const SizedBox(height: 10),
         OutlinedButton.icon(
           onPressed: onSearch,
@@ -674,6 +880,15 @@ class _Sidebar extends StatelessWidget {
             trailing: '${app.archivedTasks.length}'),
         const SizedBox(height: 24),
         _WeekCard(),
+        const SizedBox(height: 12),
+        Center(
+          child: TextButton.icon(
+            onPressed: () => showShortcutsHelp(context),
+            icon: const Icon(Icons.keyboard_outlined, size: 18),
+            label: const Text('Keyboard shortcuts  ?'),
+            style: TextButton.styleFrom(foregroundColor: scheme.muted),
+          ),
+        ),
       ],
     );
   }
@@ -744,6 +959,11 @@ class AccountButton extends StatelessWidget {
           onPressed: onArchive,
           child: const Text('Archive'),
         ),
+        MenuItemButton(
+          leadingIcon: const Icon(Icons.keyboard_outlined),
+          onPressed: () => showShortcutsHelp(context),
+          child: const Text('Keyboard shortcuts'),
+        ),
         SubmenuButton(
           leadingIcon: const Icon(Icons.palette_outlined),
           menuChildren: [
@@ -808,4 +1028,130 @@ class AccountButton extends StatelessWidget {
       await app.auth.updateDisplayName(name);
     }
   }
+}
+
+/// Swipe right to complete (or reopen), swipe left to archive.
+/// The card snaps back for "done" so it can stay in views that show done tasks;
+/// archive lets it slide away.
+class _SwipeableTask extends StatelessWidget {
+  const _SwipeableTask({
+    super.key,
+    required this.task,
+    required this.onDone,
+    required this.onArchive,
+    required this.child,
+  });
+
+  final Task task;
+  final VoidCallback onDone;
+  final VoidCallback onArchive;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+
+    Widget bg(Alignment align, Color color, IconData icon, String label) => Container(
+          alignment: align,
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: Colors.white),
+              const SizedBox(width: 8),
+              Text(label,
+                  style: theme.textTheme.labelLarge?.copyWith(color: Colors.white)),
+            ],
+          ),
+        );
+
+    return Dismissible(
+      key: ValueKey('swipe-${task.id}'),
+      dismissThresholds: const {
+        DismissDirection.startToEnd: 0.3,
+        DismissDirection.endToStart: 0.3,
+      },
+      background: bg(
+        Alignment.centerLeft,
+        task.isDone ? scheme.info : scheme.success,
+        task.isDone ? Icons.replay_rounded : Icons.check_rounded,
+        task.isDone ? 'Reopen' : 'Done',
+      ),
+      secondaryBackground: bg(
+        Alignment.centerRight,
+        scheme.onSurfaceVariant,
+        Icons.inventory_2_outlined,
+        'Archive',
+      ),
+      confirmDismiss: (dir) async {
+        HapticFeedback.mediumImpact();
+        if (dir == DismissDirection.startToEnd) {
+          onDone();
+          return false; // snap back; the list updates itself
+        }
+        return true;
+      },
+      onDismissed: (_) => onArchive(),
+      child: child,
+    );
+  }
+}
+
+const _shortcuts = <(String, String)>[
+  ('N', 'Quick add'),
+  ('Shift + N', 'New task with steps & details'),
+  ('/  or  Ctrl/⌘ + K', 'Search'),
+  ('J / K  or  ↓ / ↑', 'Move through tasks'),
+  ('Enter', 'Open selected task'),
+  ('X  or  Space', 'Mark selected done / reopen'),
+  ('E', 'Edit selected'),
+  ('A', 'Archive selected'),
+  ('Delete', 'Delete selected'),
+  ('1 – 5', 'Active · Today · Upcoming · Done · All'),
+  ('Esc', 'Clear selection'),
+  ('Ctrl/⌘ + Enter', 'Save in the editor'),
+  ('?', 'Show this list'),
+];
+
+Future<void> showShortcutsHelp(BuildContext context) {
+  final theme = Theme.of(context);
+  final scheme = theme.colorScheme;
+  return showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Keyboard shortcuts'),
+      content: SizedBox(
+        width: 420,
+        child: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            for (final (keys, action) in _shortcuts)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(children: [
+                  Expanded(child: Text(action, style: theme.textTheme.bodyMedium)),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: scheme.subtle,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: theme.dividerTheme.color!),
+                    ),
+                    child: Text(keys,
+                        style: theme.textTheme.labelMedium),
+                  ),
+                ]),
+              ),
+          ]),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+      ],
+    ),
+  );
 }
