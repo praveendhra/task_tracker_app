@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../models/task.dart';
+import '../models/user_settings.dart';
 
 class AppUser {
   const AppUser({required this.uid, required this.email, this.displayName});
@@ -48,4 +49,7 @@ abstract class TaskRepository {
   /// One-off work to run after sign-in (e.g. importing legacy data).
   /// Returns how many tasks were imported.
   Future<int> prepare() async => 0;
+
+  Future<UserSettings> loadSettings();
+  Future<void> saveSettings(UserSettings settings);
 }

@@ -9,6 +9,7 @@ import '../widgets/common.dart';
 import '../widgets/quick_add_sheet.dart';
 import 'archive_screen.dart';
 import 'search_screen.dart';
+import 'settings_screen.dart';
 import 'task_detail_screen.dart';
 import 'task_editor.dart';
 
@@ -51,6 +52,8 @@ class _HomeScreenState extends State<HomeScreen> {
         showQuickAdd(context, initialText: demoParams['q'] ?? '');
       case 'shortcuts':
         showShortcutsHelp(context);
+      case 'settings':
+        showSettings(context);
       case 'archive':
         _openArchive();
       case 'search':
@@ -973,6 +976,11 @@ class AccountButton extends StatelessWidget {
           leadingIcon: const Icon(Icons.inventory_2_outlined),
           onPressed: onArchive,
           child: const Text('Archive'),
+        ),
+        MenuItemButton(
+          leadingIcon: const Icon(Icons.settings_outlined),
+          onPressed: () => showSettings(context),
+          child: const Text('Settings & daily email'),
         ),
         MenuItemButton(
           leadingIcon: const Icon(Icons.keyboard_outlined),

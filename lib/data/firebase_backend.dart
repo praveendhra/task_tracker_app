@@ -7,6 +7,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/task.dart';
+import '../models/user_settings.dart';
 import 'repository.dart';
 
 AppUser? _toAppUser(User? u) => u == null
@@ -122,6 +123,21 @@ class FirestoreTaskRepository extends TaskRepository {
 
   @override
   Future<void> delete(String taskId) => _tasks.doc(taskId).delete();
+
+  @override
+  Future<UserSettings> loadSettings() async {
+    try {
+      final snap = await _userDoc.get();
+      return UserSettings.fromMap(snap.data());
+    } catch (e) {
+      debugPrint('Could not load settings: $e');
+      return const UserSettings();
+    }
+  }
+
+  @override
+  Future<void> saveSettings(UserSettings settings) =>
+      _userDoc.set(settings.toMap(), SetOptions(merge: true));
 
   Map<String, dynamic> _toDoc(Task t) => {
         ...t.toMap(),

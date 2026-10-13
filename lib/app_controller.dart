@@ -5,6 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'data/repository.dart';
 import 'models/task.dart';
+import 'models/user_settings.dart';
+import 'platform/timezone.dart';
 
 enum TaskFilter { active, today, upcoming, done, all }
 
@@ -32,6 +34,7 @@ class AppController extends ChangeNotifier {
   bool tasksLoaded = false;
   List<Task> _tasks = const [];
   int? lastImportCount;
+  UserSettings settings = const UserSettings();
   Object? syncError;
 
   ThemeMode themeMode = ThemeMode.system;
@@ -60,6 +63,7 @@ class AppController extends ChangeNotifier {
       _taskSub = null;
       _repo = null;
       _tasks = const [];
+      settings = const UserSettings();
       tasksLoaded = false;
       syncError = null;
       if (u != null) {
@@ -69,6 +73,7 @@ class AppController extends ChangeNotifier {
         final imported = await repo.prepare();
         if (!identical(_repo, repo)) return; // signed out meanwhile
         if (imported > 0) lastImportCount = imported;
+        _loadSettings(repo);
         _taskSub = repo.watchTasks().listen((tasks) {
           _tasks = tasks;
           tasksLoaded = true;
@@ -260,6 +265,29 @@ class AppController extends ChangeNotifier {
   }
 
   void clearImportNotice() => lastImportCount = null;
+
+  /// The browser's time zone, if it can be detected.
+  String? get detectedTimezone => detectTimezone();
+
+  Future<void> _loadSettings(TaskRepository repo) async {
+    var s = await repo.loadSettings();
+    if (!identical(_repo, repo)) return;
+    // Fill in the time zone the first time we see this account, so the
+    // morning email lands at the right local hour.
+    final tz = detectTimezone();
+    if (s.timezone.isEmpty && tz != null) {
+      s = s.copyWith(timezone: tz);
+      await repo.saveSettings(s);
+    }
+    settings = s;
+    notifyListeners();
+  }
+
+  Future<void> saveSettings(UserSettings s) async {
+    settings = s;
+    notifyListeners();
+    await _repo?.saveSettings(s);
+  }
 
   @override
   void dispose() {

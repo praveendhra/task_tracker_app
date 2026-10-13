@@ -1,0 +1,44 @@
+name: Daily email
+
+# Runs hourly; each user gets one email a day at their chosen local hour.
+on:
+  schedule:
+    - cron: '7 * * * *'
+  workflow_dispatch:
+    inputs:
+      force_email:
+        description: 'Send now to this account (email address), ignoring the hour'
+        required: false
+      dry_run:
+        description: 'Only log what would be sent'
+        type: boolean
+        default: false
+
+concurrency:
+  group: daily-email
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: tool/daily_email
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - run: node send.mjs
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          MAIL_FROM: ${{ vars.MAIL_FROM || 'Task Tracker <tasks@mail.praveendhra.com>' }}
+          APP_URL: https://task.praveendhra.com
+          FORCE_EMAIL: ${{ inputs.force_email }}
+          DRY_RUN: ${{ inputs.dry_run && 'true' || '' }}

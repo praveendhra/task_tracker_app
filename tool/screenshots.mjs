@@ -30,6 +30,8 @@ const shots = [
   ['desktop', 'light', 'screen=editor', 'editor'],
   ['desktop', 'light', `screen=quick&q=${q}`, 'quick'],
   ['desktop', 'light', 'screen=shortcuts', 'shortcuts'],
+  ['desktop', 'light', 'screen=settings', 'settings'],
+  ['phone', 'light', 'screen=settings', 'settings'],
 ];
 
 const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'] });
