@@ -99,32 +99,24 @@ class SettingsScreen extends StatelessWidget {
                 enabled: s.dailyEmail,
                 leading: const Icon(Icons.public_rounded),
                 title: const Text('Time zone'),
-                subtitle: app.detectedTimezone != null &&
-                        app.detectedTimezone != s.timezone &&
-                        s.timezone.isNotEmpty
-                    ? Text('This device is in ${app.detectedTimezone}',
-                        style: TextStyle(color: scheme.warning))
-                    : null,
-                trailing: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 220),
-                  child: DropdownButton<String>(
-                    value: s.timezone.isEmpty ? null : s.timezone,
-                    hint: const Text('Choose'),
-                    isExpanded: true,
-                    underline: const SizedBox.shrink(),
-                    onChanged: s.dailyEmail
-                        ? (tz) => update(s.copyWith(timezone: tz))
-                        : null,
-                    items: [
-                      for (final z in zones)
-                        DropdownMenuItem(
-                          value: z,
-                          child: Text(z.replaceAll('_', ' '),
-                              overflow: TextOverflow.ellipsis),
-                        ),
-                    ],
-                  ),
-                ),
+                subtitle: Text.rich(TextSpan(children: [
+                  TextSpan(
+                      text: s.timezone.isEmpty
+                          ? 'Not set'
+                          : s.timezone.replaceAll('_', ' ')),
+                  if (app.detectedTimezone != null &&
+                      s.timezone.isNotEmpty &&
+                      app.detectedTimezone != s.timezone)
+                    TextSpan(
+                      text: '\nThis device is in ${app.detectedTimezone!.replaceAll('_', ' ')}',
+                      style: TextStyle(color: scheme.warning),
+                    ),
+                ])),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () async {
+                  final tz = await _pickTimezone(context, zones, s.timezone);
+                  if (tz != null) update(s.copyWith(timezone: tz));
+                },
               ),
             ]),
           ),
@@ -164,6 +156,67 @@ class SettingsScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+Future<String?> _pickTimezone(BuildContext context, List<String> zones, String current) {
+  return showModalBottomSheet<String>(
+    context: context,
+    isScrollControlled: true,
+    builder: (context) => _TimezonePicker(zones: zones, current: current),
+  );
+}
+
+class _TimezonePicker extends StatefulWidget {
+  const _TimezonePicker({required this.zones, required this.current});
+  final List<String> zones;
+  final String current;
+
+  @override
+  State<_TimezonePicker> createState() => _TimezonePickerState();
+}
+
+class _TimezonePickerState extends State<_TimezonePicker> {
+  String _q = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final q = _q.toLowerCase().replaceAll(' ', '_');
+    final list = widget.zones.where((z) => z.toLowerCase().contains(q)).toList();
+    return SizedBox(
+      height: MediaQuery.sizeOf(context).height * 0.75,
+      child: Column(children: [
+        Padding(
+          padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: TextField(
+            autofocus: true,
+            onChanged: (v) => setState(() => _q = v),
+            decoration: const InputDecoration(
+              hintText: 'Search city or region',
+              prefixIcon: Icon(Icons.search_rounded),
+            ),
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            itemCount: list.length,
+            itemBuilder: (context, i) {
+              final z = list[i];
+              final selected = z == widget.current;
+              return ListTile(
+                title: Text(z.split('/').last.replaceAll('_', ' ')),
+                subtitle: Text(z.replaceAll('_', ' '),
+                    style: TextStyle(color: scheme.muted)),
+                trailing: selected ? Icon(Icons.check_rounded, color: scheme.primary) : null,
+                selected: selected,
+                onTap: () => Navigator.pop(context, z),
+              );
+            },
+          ),
+        ),
+      ]),
     );
   }
 }
