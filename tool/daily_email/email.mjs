@@ -207,7 +207,13 @@ export function renderHtml(d, { name, appUrl }) {
 <body style="margin:0;padding:0;background:${C.bg};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${C.bg};padding:24px 12px;"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:${C.card};border-radius:16px;overflow:hidden;">
-  <tr><td style="padding:24px 24px 8px;">
+  <tr><td style="padding:20px 24px 0;">
+    <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+      <td style="vertical-align:middle;"><img src="${esc(appUrl)}/mark.png" width="32" height="32" alt="" style="display:block;border:0;width:32px;height:32px;"></td>
+      <td style="vertical-align:middle;padding-left:10px;font-size:15px;font-weight:700;color:${C.text};">Task Tracker</td>
+    </tr></table>
+  </td></tr>
+  <tr><td style="padding:16px 24px 8px;">
     <div style="font-size:13px;color:${C.muted};">${esc(prettyDate(d.today, { weekday: 'long', month: 'long', day: 'numeric' }))}</div>
     <div style="font-size:22px;font-weight:700;color:${C.text};margin-top:4px;">${hello}</div>
     <div style="font-size:14px;color:${C.muted};margin-top:4px;">Here's where your tasks stand.</div>
