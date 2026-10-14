@@ -4,8 +4,8 @@
 // workflow started through the API begins within seconds. Cloudflare's cron
 // fires on time, so this Worker is the clock and GitHub does the work.
 //
-// Runs every 15 minutes because every time zone is a multiple of 15 minutes
-// from UTC (India +5:30, Nepal +5:45...), so 9:00 local is always a run time.
+// Runs at the top of every hour. In zones with a half-hour offset (India
+// +5:30, Nepal +5:45...) the email lands 30-45 minutes after the chosen hour.
 //
 // Secret: GITHUB_TOKEN, a fine-grained token with Actions: read & write on
 // praveendhra/task_tracker_app only.
@@ -45,7 +45,7 @@ export default {
 
   // Visiting the Worker's URL shows that it is alive; it never triggers a run.
   async fetch() {
-    return new Response('Task Tracker email trigger: runs every 15 minutes.\n', {
+    return new Response('Task Tracker email trigger: runs every hour.\n', {
       headers: { 'content-type': 'text/plain' },
     });
   },
