@@ -39,7 +39,7 @@ Version 1 kept every task for a user in a single JSON string at `users/{uid}/dat
 
 Users can turn on a morning summary under **Settings & daily email** (account menu). It lists high-priority tasks first, then overdue, due today, in progress and the coming week, and is sent at the chosen hour in the user's time zone (detected from the browser). No email goes out on a day with nothing open.
 
-`.github/workflows/daily-email.yml` runs `tool/daily_email/send.mjs` every hour. It reads opted-in users from Firestore with the Admin SDK, sends through [Resend](https://resend.com), and records `lastDailyEmail` so each user gets one email a day. GitHub can start scheduled runs late, so anything within 4 hours of the chosen time still sends.
+`.github/workflows/daily-email.yml` runs `tool/daily_email/send.mjs` every 15 minutes. It reads opted-in users from Firestore with the Admin SDK, sends through [Resend](https://resend.com), and records `lastDailyEmail` so each user gets one email a day. GitHub sometimes skips or delays scheduled runs, so the email goes out on the first run at or after the chosen hour, any time before midnight in the user's time zone. Every open task appears in the email: anything that isn't high priority, overdue, due soon or in progress is listed under *Other open tasks*.
 
 Repository secrets it needs (Settings → Secrets and variables → Actions):
 

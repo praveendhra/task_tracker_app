@@ -60,3 +60,16 @@ test('steps due today or overdue get their own list', () => {
   assert.equal(d.high[0].currentStepDue, '2026-10-11');
   assert.match(subjectFor(d), /2 steps due/);
 });
+
+test('every open task appears in exactly one section', () => {
+  const tasks = normaliseTasks([
+    { title: 'No date, not started', status: 1, priority: 0 },
+    { title: 'Medium, due next month', status: 1, priority: 2, dueDate: at(2026, 11, 20) },
+    { title: 'High', status: 1, priority: 3 },
+    { title: 'Done', status: 3 },
+  ], tz);
+  const d = buildDigest(tasks, '2026-10-13');
+  const shown = [d.high, d.overdue, d.dueToday, d.inProgress, d.upcoming, d.other].flat().map((t) => t.title);
+  assert.deepEqual(shown.sort(), ['High', 'Medium, due next month', 'No date, not started']);
+  assert.deepEqual(d.other.map((t) => t.title), ['Medium, due next month', 'No date, not started']);
+});

@@ -18,8 +18,6 @@ const {
   APP_URL = 'https://task.praveendhra.com', FORCE_EMAIL = '', DRY_RUN = '',
 } = process.env;
 const dryRun = DRY_RUN === 'true';
-// GitHub's scheduler can run late; still send if we're within this many hours.
-const WINDOW_HOURS = 4;
 
 if (!FIREBASE_SERVICE_ACCOUNT) {
   console.log('::warning::FIREBASE_SERVICE_ACCOUNT is not set, so no emails were sent. See README.');
@@ -69,7 +67,9 @@ async function main() {
       const today = localDate(now, tz);
       const h = localHour(now, tz);
       const forced = uid === forcedUid;
-      const due = forced || (h >= hour && h < hour + WINDOW_HOURS && prefs.lastDailyEmail !== today);
+      // Any run from the chosen hour until midnight sends, once. If GitHub
+      // skips the on-time runs, the email still arrives, just later.
+      const due = forced || (h >= hour && prefs.lastDailyEmail !== today);
       if (!due) { skipped++; continue; }
 
       const snap = await db.collection('users').doc(uid).collection('tasks').get();

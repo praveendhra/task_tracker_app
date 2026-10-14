@@ -1,9 +1,12 @@
 name: Daily email
 
-# Runs hourly; each user gets one email a day at their chosen local hour.
+# Each user gets one email a day at their chosen local hour. GitHub often
+# skips or delays scheduled runs, so this checks every 15 minutes (at odd
+# minutes, away from the busy top of the hour); the script sends at most
+# once per user per day, so extra runs are harmless.
 on:
   schedule:
-    - cron: '7 * * * *'
+    - cron: '4,19,34,49 * * * *'
   workflow_dispatch:
     inputs:
       force_email:
