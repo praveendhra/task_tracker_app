@@ -39,7 +39,18 @@ Version 1 kept every task for a user in a single JSON string at `users/{uid}/dat
 
 Users can turn on a morning summary under **Settings & daily email** (account menu). It lists high-priority tasks first, then overdue, due today, in progress and the coming week, and is sent at the chosen hour in the user's time zone (detected from the browser). No email goes out on a day with nothing open.
 
-`.github/workflows/daily-email.yml` runs `tool/daily_email/send.mjs` every 15 minutes. It reads opted-in users from Firestore with the Admin SDK, sends through [Resend](https://resend.com), and records `lastDailyEmail` so each user gets one email a day. GitHub sometimes skips or delays scheduled runs, so the email goes out on the first run at or after the chosen hour, any time before midnight in the user's time zone. Every open task appears in the email: anything that isn't high priority, overdue, due soon or in progress is listed under *Other open tasks*.
+`tool/daily_email/send.mjs` does the work: it reads opted-in users from Firestore with the Admin SDK, sends through [Resend](https://resend.com), and records `lastDailyEmail` so each user gets one email a day. Every open task appears in the email; anything that isn't high priority, overdue, due soon or in progress is listed under *Other open tasks*.
+
+It runs in `.github/workflows/daily-email.yml`, which is started every 15 minutes by a Cloudflare Worker (`cloudflare/email-trigger`). GitHub's own cron is best-effort and often skips runs, while Cloudflare's cron fires on time and a dispatched workflow starts within seconds. Every time zone is offset from UTC in 15-minute steps, so 9:00 local is always a run time, including India (+5:30) and Nepal (+5:45). An hourly GitHub schedule stays as a backup; if runs are missed the email still goes out on the first run after the chosen hour, before midnight.
+
+### Cloudflare trigger setup
+
+1. GitHub → Settings → Developer settings → Fine-grained tokens → Generate. Repository access: only `praveendhra/task_tracker_app`. Permissions: **Actions: Read and write**. Copy the token.
+2. Cloudflare dashboard → Workers & Pages → Create → Worker. Name it `task-tracker-email-trigger`, deploy, then **Edit code**, paste `cloudflare/email-trigger/src/index.js`, and deploy again.
+3. The Worker's **Settings → Variables and Secrets**: add a **Secret** named `GITHUB_TOKEN` with the token.
+4. **Settings → Trigger events → Add → Cron trigger**: `*/15 * * * *`.
+
+(Or from this folder: `npx wrangler deploy` and `npx wrangler secret put GITHUB_TOKEN`.) The Worker's Logs tab shows each run; GitHub → Actions → Daily email shows the runs it started.
 
 Repository secrets it needs (Settings → Secrets and variables → Actions):
 
