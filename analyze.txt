@@ -1,0 +1,5 @@
+Analyzing task_tracker_app...                                   
+
+   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • lib/screens/settings_screen.dart:192:20 • prefer_const_constructors
+
+1 issue found. (ran in 10.1s)
