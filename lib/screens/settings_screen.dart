@@ -124,7 +124,7 @@ class SettingsScreen extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(4, 10, 4, 0),
             child: Text(
               "No email is sent on a day when you have nothing open. "
-              "It can arrive up to about 20 minutes after the hour.",
+              "It usually arrives within a few minutes of the hour.",
               style: theme.textTheme.bodySmall?.copyWith(color: scheme.muted),
             ),
           ),

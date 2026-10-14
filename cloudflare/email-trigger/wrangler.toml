@@ -1,0 +1,9 @@
+name = "task-tracker-email-trigger"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+
+[triggers]
+crons = ["0 * * * *"]
+
+[observability]
+enabled = true

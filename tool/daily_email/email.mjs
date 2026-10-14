@@ -96,6 +96,8 @@ export function buildDigest(tasks, today) {
   const inProgress = take(open.filter((t) => t.status === 2).sort((a, b) => b.priority - a.priority || byDue(a, b)));
   const weekEnd = addDays(today, 7);
   const upcoming = take(open.filter((t) => t.due && t.due > today && t.due <= weekEnd).sort(byDue));
+  // Everything still open that didn't fit above, so no task is ever left out.
+  const other = take(open.slice().sort((a, b) => b.priority - a.priority || byDue(a, b)));
 
   // Steps that are overdue or due today, from any open task (high priority first).
   const stepsDue = open
@@ -114,6 +116,7 @@ export function buildDigest(tasks, today) {
     dueToday,
     inProgress,
     upcoming,
+    other,
     highCount: open.filter((t) => t.priority === 3).length,
     overdueCount: open.filter((t) => t.due && t.due < today).length,
     dueTodayCount: open.filter((t) => t.due === today).length,
@@ -232,6 +235,7 @@ export function renderHtml(d, { name, appUrl }) {
   ${stepSection(d.stepsDue, d.today)}
   ${section('In progress', C.blue, d.inProgress, d.today)}
   ${section('Coming up this week', C.muted, d.upcoming, d.today)}
+  ${section('Other open tasks', C.muted, d.other, d.today)}
   <tr><td align="center" style="padding:24px;">
     <a href="${esc(appUrl)}" style="display:inline-block;background:${C.brand};color:#fff;text-decoration:none;font-weight:600;font-size:15px;padding:12px 22px;border-radius:10px;">Open Task Tracker</a>
   </td></tr>
@@ -266,6 +270,7 @@ export function renderText(d, { name, appUrl }) {
   }
   sec('In progress', d.inProgress);
   sec('Coming up this week', d.upcoming);
+  sec('Other open tasks', d.other);
   lines.push(`Open Task Tracker: ${appUrl}`, '', 'Turn this email off in Task Tracker > Settings.');
   return lines.join('\n');
 }

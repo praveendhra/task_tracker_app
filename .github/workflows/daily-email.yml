@@ -1,9 +1,15 @@
 name: Daily email
 
-# Runs hourly; each user gets one email a day at their chosen local hour.
+# Each user gets one email a day at their chosen local hour.
+#
+# The real clock is the Cloudflare Worker in cloudflare/email-trigger, which
+# starts this workflow every hour via workflow_dispatch (on time, unlike
+# GitHub's cron). The hourly schedule below is only a backup in case the Worker
+# is down. Extra runs are harmless: each user gets at most one email per day,
+# and the concurrency group below stops two runs overlapping.
 on:
   schedule:
-    - cron: '7 * * * *'
+    - cron: '41 * * * *'
   workflow_dispatch:
     inputs:
       force_email:
