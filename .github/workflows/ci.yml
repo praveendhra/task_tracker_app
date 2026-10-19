@@ -113,6 +113,8 @@ jobs:
   android:
     name: Android build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -125,7 +127,21 @@ jobs:
           cache: true
       - run: flutter pub get
       # Unsigned here (debug key); the release workflow signs with the upload key.
-      - run: flutter build appbundle --release
+      - name: Build app bundle
+        run: |
+          mkdir -p ../android-log
+          flutter build appbundle --release 2>&1 | tee ../android-log/build.txt
+          exit ${PIPESTATUS[0]}
+      - name: Publish build log to ci-android-log branch
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          cd ../android-log
+          git init -q -b ci-android-log
+          git add -A
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -qm "Android log for ${GITHUB_SHA::7}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:ci-android-log
 
   ios:
     name: iOS build (no signing)
