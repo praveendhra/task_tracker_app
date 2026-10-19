@@ -1,55 +1,37 @@
-buildscript {
-    ext.kotlin_version = '1.8.0' // Change this version
-}
 plugins {
     id "com.android.application"
-    // START: FlutterFire Configuration
-    id 'com.google.gms.google-services'
-    // END: FlutterFire Configuration
+    id "com.google.gms.google-services"
     id "kotlin-android"
     id "dev.flutter.flutter-gradle-plugin"
 }
 
-def localProperties = new Properties()
-def localPropertiesFile = rootProject.file('local.properties')
-if (localPropertiesFile.exists()) {
-    localPropertiesFile.withReader('UTF-8') { reader ->
-        localProperties.load(reader)
-    }
+// Release signing comes from environment variables (set by CI from GitHub
+// secrets) or an untracked android/key.properties for local builds. Nothing
+// secret is committed. Without either, release builds use the debug key so
+// `flutter build` still works for testing.
+def keyProps = new Properties()
+def keyPropsFile = rootProject.file('key.properties')
+if (keyPropsFile.exists()) {
+    keyPropsFile.withReader('UTF-8') { keyProps.load(it) }
 }
-
-def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
-if (flutterVersionCode == null) {
-    flutterVersionCode = '1'
+def signingValue = { String envName, String propName ->
+    System.getenv(envName) ?: keyProps.getProperty(propName)
 }
-
-def flutterVersionName = localProperties.getProperty('flutter.versionName')
-if (flutterVersionName == null) {
-    flutterVersionName = '1.0'
-}
+def releaseStoreFile = signingValue('ANDROID_KEYSTORE_PATH', 'storeFile')
+def hasReleaseSigning = releaseStoreFile != null && file(releaseStoreFile).exists()
 
 android {
     namespace "com.pravii_corp.task_tracker"
     compileSdk flutter.compileSdkVersion
     ndkVersion flutter.ndkVersion
 
-    signingConfigs {
-        release {
-            keyAlias 'upload'
-            keyPassword '123456'
-            storeFile file('/Users/praveendhra/upload-keystore.jks')
-            storePassword '123456'
-        }
-    }
-
-
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = '1.8'
+        jvmTarget = '17'
     }
 
     sourceSets {
@@ -57,21 +39,27 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId "com.pravii_corp.task_tracker"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
         minSdkVersion 23
         targetSdkVersion flutter.targetSdkVersion
-        versionCode flutterVersionCode.toInteger()
-        versionName flutterVersionName
+        versionCode flutter.versionCode
+        versionName flutter.versionName
+    }
+
+    signingConfigs {
+        if (hasReleaseSigning) {
+            release {
+                storeFile file(releaseStoreFile)
+                storePassword signingValue('ANDROID_KEYSTORE_PASSWORD', 'storePassword')
+                keyAlias signingValue('ANDROID_KEY_ALIAS', 'keyAlias')
+                keyPassword signingValue('ANDROID_KEY_PASSWORD', 'keyPassword')
+            }
+        }
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig signingConfigs.release
+            signingConfig hasReleaseSigning ? signingConfigs.release : signingConfigs.debug
         }
     }
 }
@@ -79,5 +67,3 @@ android {
 flutter {
     source '../..'
 }
-
-dependencies {}

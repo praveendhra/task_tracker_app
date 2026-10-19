@@ -41,6 +41,65 @@ class FirebaseAuthService implements AuthService {
       });
 
   @override
+  bool get supportsApple =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+
+  @override
+  Future<void> signInWithApple() => _guard(() async {
+        final provider = AppleAuthProvider()
+          ..addScope('email')
+          ..addScope('name');
+        final cred = await _auth.signInWithProvider(provider);
+        // Apple shares the name only on the very first sign-in.
+        final user = cred.user;
+        final name = cred.additionalUserInfo?.profile?['name'];
+        if (user != null && (user.displayName ?? '').isEmpty && name is Map) {
+          final full = [name['firstName'], name['lastName']]
+              .whereType<String>()
+              .where((s) => s.isNotEmpty)
+              .join(' ');
+          if (full.isNotEmpty) {
+            await user.updateDisplayName(full);
+            await user.reload();
+          }
+        }
+      });
+
+  @override
+  String? get primaryProvider {
+    final ids = _auth.currentUser?.providerData.map((p) => p.providerId).toList() ?? [];
+    for (final id in ['password', 'google.com', 'apple.com']) {
+      if (ids.contains(id)) return id;
+    }
+    return ids.isEmpty ? null : ids.first;
+  }
+
+  @override
+  Future<void> reauthenticate({String? password}) => _guard(() async {
+        final user = _auth.currentUser;
+        if (user == null) throw FirebaseAuthException(code: 'no-current-user');
+        switch (primaryProvider) {
+          case 'password':
+            await user.reauthenticateWithCredential(EmailAuthProvider.credential(
+                email: user.email ?? '', password: password ?? ''));
+          case 'apple.com':
+            await user.reauthenticateWithProvider(AppleAuthProvider());
+          default:
+            final google = GoogleAuthProvider();
+            if (kIsWeb) {
+              await user.reauthenticateWithPopup(google);
+            } else {
+              await user.reauthenticateWithProvider(google);
+            }
+        }
+      });
+
+  @override
+  Future<void> deleteAccount() => _guard(() async {
+        await _auth.currentUser?.delete();
+      });
+
+  @override
   Future<void> signUp(String name, String email, String password) =>
       _guard(() async {
         final cred = await _auth.createUserWithEmailAndPassword(
@@ -94,6 +153,10 @@ class FirebaseAuthService implements AuthService {
           'This email already has an account. Sign in with your password instead.',
         'operation-not-allowed' =>
           'Google sign-in is not enabled for this app yet.',
+        'requires-recent-login' =>
+          'For your security, sign in again and then retry.',
+        'user-mismatch' =>
+          'That was a different account. Use the one you are signed in with.',
         'unauthorized-domain' =>
           'Google sign-in is not allowed on this web address yet.',
         _ => 'Something went wrong ($code). Please try again.',
@@ -138,6 +201,25 @@ class FirestoreTaskRepository extends TaskRepository {
   @override
   Future<void> saveSettings(UserSettings settings) =>
       _userDoc.set(settings.toMap(), SetOptions(merge: true));
+
+  @override
+  Future<void> deleteAllData() async {
+    // Firestore batches hold up to 500 writes.
+    final docs = (await _tasks.get()).docs;
+    for (var i = 0; i < docs.length; i += 450) {
+      final batch = _db.batch();
+      for (final d in docs.skip(i).take(450)) {
+        batch.delete(d.reference);
+      }
+      await batch.commit();
+    }
+    await _userDoc.delete();
+    try {
+      await FirebaseDatabase.instance.ref('users/$_uid').remove();
+    } catch (e) {
+      debugPrint('Legacy data not removed: $e');
+    }
+  }
 
   Map<String, dynamic> _toDoc(Task t) => {
         ...t.toMap(),

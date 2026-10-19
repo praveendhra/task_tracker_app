@@ -32,6 +32,21 @@ abstract class AuthService {
 
   /// Google sign-in. Creates the account on first use.
   Future<void> signInWithGoogle();
+
+  /// Sign in with Apple. Only offered on iPhone (App Store guideline 4.8).
+  bool get supportsApple;
+  Future<void> signInWithApple();
+
+  /// How the signed-in user proves who they are again before a sensitive
+  /// action: 'password', 'google.com' or 'apple.com'.
+  String? get primaryProvider;
+
+  /// Confirms identity right before deleting the account. [password] is
+  /// only used for email/password accounts.
+  Future<void> reauthenticate({String? password});
+
+  /// Deletes the sign-in account itself. Delete the user's data first.
+  Future<void> deleteAccount();
   Future<void> signUp(String name, String email, String password);
   Future<void> sendPasswordReset(String email);
   Future<void> updateDisplayName(String name);
@@ -52,4 +67,7 @@ abstract class TaskRepository {
 
   Future<UserSettings> loadSettings();
   Future<void> saveSettings(UserSettings settings);
+
+  /// Removes every task, the settings and any legacy data for this user.
+  Future<void> deleteAllData();
 }

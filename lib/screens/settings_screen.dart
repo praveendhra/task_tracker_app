@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../app_controller.dart';
+import '../data/repository.dart';
 import '../models/user_settings.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
@@ -154,6 +156,33 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
           ),
+          const SizedBox(height: 28),
+          const SectionLabel('Account'),
+          Card(
+            child: Column(children: [
+              ListTile(
+                leading: const Icon(Icons.person_outline_rounded),
+                title: Text(user?.displayName?.isNotEmpty == true ? user!.displayName! : 'Signed in'),
+                subtitle: Text(user?.email ?? ''),
+              ),
+              const Divider(indent: 16, endIndent: 16),
+              ListTile(
+                leading: const Icon(Icons.privacy_tip_outlined),
+                title: const Text('Privacy policy'),
+                subtitle: const Text('task.praveendhra.com/privacy.html'),
+                trailing: const Icon(Icons.open_in_new_rounded, size: 18),
+                onTap: () => launchUrl(Uri.parse('https://task.praveendhra.com/privacy.html'),
+                    mode: LaunchMode.externalApplication),
+              ),
+              const Divider(indent: 16, endIndent: 16),
+              ListTile(
+                leading: Icon(Icons.delete_forever_outlined, color: scheme.danger),
+                title: Text('Delete account', style: TextStyle(color: scheme.danger)),
+                subtitle: const Text('Permanently remove your account and all tasks'),
+                onTap: () => _confirmDeleteAccount(context),
+              ),
+            ]),
+          ),
         ],
       ),
     );
@@ -218,5 +247,60 @@ class _TimezonePickerState extends State<_TimezonePicker> {
         ),
       ]),
     );
+  }
+}
+
+Future<void> _confirmDeleteAccount(BuildContext context) async {
+  final app = AppScope.read(context);
+  final scheme = Theme.of(context).colorScheme;
+  final needsPassword = app.auth.primaryProvider == 'password';
+  final password = TextEditingController();
+  final messenger = ScaffoldMessenger.of(context);
+  final nav = Navigator.of(context);
+
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Delete your account?'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'This permanently deletes your account, every task and step, '
+            'and your settings. It cannot be undone.',
+          ),
+          const SizedBox(height: 16),
+          if (needsPassword)
+            TextField(
+              controller: password,
+              obscureText: true,
+              autofocus: true,
+              decoration: const InputDecoration(labelText: 'Password to confirm'),
+            )
+          else
+            const Text("You'll be asked to sign in again to confirm it's you."),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+        FilledButton(
+          style: FilledButton.styleFrom(backgroundColor: scheme.danger),
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Delete forever'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true) return;
+
+  try {
+    await app.deleteAccount(password: needsPassword ? password.text : null);
+    nav.popUntil((r) => r.isFirst);
+    messenger.showSnackBar(const SnackBar(content: Text('Your account has been deleted.')));
+  } on AuthFailure catch (e) {
+    messenger.showSnackBar(SnackBar(content: Text(e.message)));
+  } catch (e) {
+    messenger.showSnackBar(SnackBar(content: Text('Could not delete the account: $e')));
   }
 }

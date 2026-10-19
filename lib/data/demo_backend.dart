@@ -65,6 +65,25 @@ class DemoAuthService implements AuthService {
 
   @override
   Future<void> signOut() async => _set(null);
+
+  @override
+  bool get supportsApple => false;
+
+  @override
+  Future<void> signInWithApple() async => _set(_demoUser);
+
+  @override
+  String? get primaryProvider => 'password';
+
+  @override
+  Future<void> reauthenticate({String? password}) async {
+    if ((password ?? '').length < 6) {
+      throw const AuthFailure('Email or password is incorrect.');
+    }
+  }
+
+  @override
+  Future<void> deleteAccount() async => _set(null);
 }
 
 class DemoTaskRepository extends TaskRepository {
@@ -95,6 +114,12 @@ class DemoTaskRepository extends TaskRepository {
 
   @override
   Future<void> saveSettings(UserSettings settings) async => _settings = settings;
+
+  @override
+  Future<void> deleteAllData() async {
+    _tasks.clear();
+    _controller.add(_snapshot);
+  }
 
   @override
   Future<void> delete(String taskId) async {

@@ -1,0 +1,67 @@
+name: iOS release
+
+# Signs the app with an App Store Connect API key and uploads it to
+# TestFlight. Run it from Actions → iOS release → Run workflow.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BUNDLE_ID: com.pravii.taskTrackerApp
+  APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+  APP_STORE_CONNECT_KEY_IDENTIFIER: ${{ secrets.APP_STORE_CONNECT_KEY_IDENTIFIER }}
+  APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+  CERTIFICATE_PRIVATE_KEY: ${{ secrets.IOS_CERTIFICATE_PRIVATE_KEY }}
+
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Check secrets
+        run: |
+          for v in APP_STORE_CONNECT_ISSUER_ID APP_STORE_CONNECT_KEY_IDENTIFIER APP_STORE_CONNECT_PRIVATE_KEY CERTIFICATE_PRIVATE_KEY; do
+            if [ -z "${!v}" ]; then echo "::error::Secret for $v is not set. See store/RELEASE.md."; exit 1; fi
+          done
+
+      - name: Install Codemagic CLI tools
+        run: pip3 install --break-system-packages codemagic-cli-tools || pip3 install codemagic-cli-tools
+
+      - name: Fetch or create signing certificate and profile
+        run: |
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --certificate-key=@env:CERTIFICATE_PRIVATE_KEY \
+            --create
+          keychain add-certificates
+
+      - run: flutter pub get
+      - name: Apply profiles to the Xcode project
+        run: xcode-project use-profiles
+
+      - name: Build IPA
+        run: |
+          BUILD=$((100 + GITHUB_RUN_NUMBER))
+          flutter build ipa --release --build-number=$BUILD \
+            --export-options-plist="$HOME/export_options.plist"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-ipa
+          path: build/ios/ipa/*.ipa
+          retention-days: 30
+
+      - name: Upload to TestFlight
+        run: app-store-connect publish --path "$(ls build/ios/ipa/*.ipa | head -1)"
+
+      - name: Clean up keychain
+        if: always()
+        run: keychain use-login || true

@@ -52,20 +52,23 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
-  Future<void> _google() async {
+  Future<void> _google() => _social(() => AppScope.read(context).auth.signInWithGoogle());
+  Future<void> _apple() => _social(() => AppScope.read(context).auth.signInWithApple());
+
+  Future<void> _social(Future<void> Function() signIn) async {
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
-      await AppScope.read(context).auth.signInWithGoogle();
+      await signIn();
     } on AuthFailure catch (e) {
       // Closing the Google window isn't an error worth shouting about.
       if (mounted && !e.message.contains('cancelled')) {
         setState(() => _error = e.message);
       }
     } catch (_) {
-      if (mounted) setState(() => _error = 'Google sign-in failed. Please try again.');
+      if (mounted) setState(() => _error = 'Sign-in failed. Please try again.');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -161,6 +164,26 @@ class _AuthScreenState extends State<AuthScreen> {
                     Text('Continue with Google', style: theme.textTheme.labelLarge),
                   ]),
                 ),
+                if (AppScope.read(context).auth.supportsApple) ...[
+                  const SizedBox(height: 12),
+                  FilledButton(
+                    onPressed: _busy ? null : _apple,
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(0, 52),
+                      backgroundColor: theme.brightness == Brightness.dark
+                          ? Colors.white
+                          : Colors.black,
+                      foregroundColor: theme.brightness == Brightness.dark
+                          ? Colors.black
+                          : Colors.white,
+                    ),
+                    child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      Icon(Icons.apple, size: 22),
+                      SizedBox(width: 10),
+                      Text('Continue with Apple'),
+                    ]),
+                  ),
+                ],
                 const SizedBox(height: 20),
                 Row(children: [
                   const Expanded(child: Divider()),
