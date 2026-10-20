@@ -1,7 +1,7 @@
 import 'task.dart';
 
 /// What quick add understood from a line like
-/// `Rotate SQL creds fri #work !high`.
+/// `Call the plumber fri #home !high`.
 class QuickAddResult {
   const QuickAddResult({
     required this.title,

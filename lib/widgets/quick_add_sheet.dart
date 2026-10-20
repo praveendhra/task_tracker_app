@@ -190,7 +190,7 @@ class _QuickAddPanelState extends State<QuickAddPanel> {
               onSubmitted: (_) => _add(),
               style: theme.textTheme.titleMedium,
               decoration: InputDecoration(
-                hintText: 'e.g. Rotate SQL creds fri #work !high',
+                hintText: 'e.g. Call the plumber fri #home !high',
                 prefixIcon: Icon(Icons.add_task_rounded, color: scheme.primary),
                 suffixIcon: IconButton(
                   tooltip: 'Add (Enter)',

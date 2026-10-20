@@ -11,7 +11,7 @@ const viewports = {
   desktop: { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 },
 };
 
-const q = encodeURIComponent('Rotate SQL creds fri #work !high');
+const q = encodeURIComponent('Call the plumber fri #home !high');
 // [viewport, theme, query, name]
 const shots = [
   ['phone', 'light', '', 'home'],
