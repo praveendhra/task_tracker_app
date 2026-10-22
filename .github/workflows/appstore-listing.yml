@@ -50,7 +50,12 @@ jobs:
         run: |
           set -o pipefail
           # Normalise the .p8 (strip CR and blank lines) and pass it base64-encoded.
-          KEY_B64=$(printf '%s\n' "$KEY" | tr -d '\r' | sed '/^[[:space:]]*$/d' | base64 -w0)
+          # Normalise the key: strip CRs/blank lines and add PEM headers if the
+          # secret holds only the body.
+          BODY=$(printf '%s\n' "$KEY" | tr -d '\r' | grep -v -e '-----' | tr -d ' \n\t')
+          echo "Key has PEM header: $(printf '%s' "$KEY" | grep -c 'BEGIN PRIVATE KEY'), body length: ${#BODY}"
+          PEM=$(printf -- '-----BEGIN PRIVATE KEY-----\n%s\n-----END PRIVATE KEY-----\n' "$(printf '%s' "$BODY" | fold -w 64)")
+          KEY_B64=$(printf '%s' "$PEM" | base64 -w0)
           jq -n --arg k "$KEY_ID" --arg i "$ISSUER" --arg p "$KEY_B64" \
             '{key_id:$k, issuer_id:$i, key:$p, is_key_content_base64:true, in_house:false}' > "$RUNNER_TEMP/asc.json"
           echo 'skip_binary_upload(true)' > Deliverfile
