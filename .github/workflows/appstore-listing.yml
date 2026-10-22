@@ -9,7 +9,7 @@ on:
     paths: ['store/appstore/**', '.github/workflows/appstore-listing.yml']
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   listing:
@@ -48,6 +48,7 @@ jobs:
           KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_IDENTIFIER }}
           KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
         run: |
+          set -o pipefail
           jq -n --arg k "$KEY_ID" --arg i "$ISSUER" --arg p "$KEY" \
             '{key_id:$k, issuer_id:$i, key:$p, in_house:false}' > "$RUNNER_TEMP/asc.json"
           fastlane deliver \
@@ -63,4 +64,15 @@ jobs:
             --skip_app_version_update true \
             --submit_for_review false \
             --run_precheck_before_submit false \
-            --force true
+            --force true 2>&1 | tee "$RUNNER_TEMP/deliver.log"
+
+      - name: Publish log to ci-release-logs branch
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/logs" && cd "$RUNNER_TEMP/logs"
+          # Copy logs with anything key-like stripped out.
+          for f in "$RUNNER_TEMP"/*.log; do [ -f "$f" ] && grep -v -E 'PRIVATE KEY|[A-Za-z0-9+/=]{40,}' "$f" > "$(basename "$f")"; done || true
+          git init -q -b ci-release-logs
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -qm "logs ${GITHUB_SHA::7}" --allow-empty
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:ci-release-logs-${{ github.workflow == 'iOS release' && 'ios' || 'listing' }}

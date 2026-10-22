@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   BUNDLE_ID: com.pravii.taskTrackerApp
@@ -50,8 +50,9 @@ jobs:
       - name: Build IPA
         run: |
           BUILD=$((100 + GITHUB_RUN_NUMBER))
+          set -o pipefail
           flutter build ipa --release --build-number=$BUILD \
-            --export-options-plist="$HOME/export_options.plist"
+            --export-options-plist="$HOME/export_options.plist" 2>&1 | tee "$RUNNER_TEMP/build.log"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -60,7 +61,20 @@ jobs:
           retention-days: 30
 
       - name: Upload to TestFlight
-        run: app-store-connect publish --path "$(ls build/ios/ipa/*.ipa | head -1)"
+        run: |
+          set -o pipefail
+          app-store-connect publish --path "$(ls build/ios/ipa/*.ipa | head -1)" 2>&1 | tee "$RUNNER_TEMP/upload.log"
+
+      - name: Publish log to ci-release-logs branch
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/logs" && cd "$RUNNER_TEMP/logs"
+          # Copy logs with anything key-like stripped out.
+          for f in "$RUNNER_TEMP"/*.log; do [ -f "$f" ] && grep -v -E 'PRIVATE KEY|[A-Za-z0-9+/=]{40,}' "$f" > "$(basename "$f")"; done || true
+          git init -q -b ci-release-logs
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -qm "logs ${GITHUB_SHA::7}" --allow-empty
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:ci-release-logs-${{ github.workflow == 'iOS release' && 'ios' || 'listing' }}
 
       - name: Clean up keychain
         if: always()
