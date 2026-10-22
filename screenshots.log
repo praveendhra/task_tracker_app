@@ -1,0 +1,68 @@
+[20:02:38]: [33mGet started using a Gemfile for fastlane https://docs.fastlane.tools/getting-started/ios/setup/#use-a-gemfile[0m
+[20:02:38]: fastlane 2.241.1 (Ruby 3.3.12, gem)
+[20:02:39]: [32mSuccessfully loaded '/home/runner/work/task_tracker_app/task_tracker_app/Deliverfile' 📄[0m
+
++--------------------------------------+
+| Detected Values from './Deliverfile' |
++--------------------+-----------------+
+| skip_binary_upload | true            |
++--------------------+-----------------+
+
+[20:02:39]: Creating authorization token for App Store Connect API
+
++-------------------------------------------------------------------------+
+|                         [32mdeliver 2.241.1 Summary[0m                         |
++--------------------------------------+----------------------------------+
+| api_key_path                         | /home/runner/work/_temp/asc.json |
+| app_identifier                       | com.pravii.taskTrackerApp        |
+| platform                             | ios                              |
+| app_version                          | 1.0                              |
+| skip_binary_upload                   | true                             |
+| skip_app_version_update              | true                             |
+| submit_for_review                    | false                            |
+| run_precheck_before_submit           | false                            |
+| force                                | true                             |
+| skip_metadata                        | true                             |
+| screenshots_path                     | store/appstore/screenshots       |
+| overwrite_screenshots                | true                             |
+| metadata_path                        | ./metadata                       |
+| edit_live                            | false                            |
+| use_live_version                     | false                            |
+| preview_frame_time_code              | 00:00:05:00                      |
+| overwrite_preview_videos             | false                            |
+| skip_screenshots                     | false                            |
+| screenshot_processing_timeout        | 3600                             |
+| sync_screenshots                     | false                            |
+| verify_only                          | false                            |
+| reject_if_possible                   | false                            |
+| version_check_wait_retry_limit       | 7                                |
+| phased_release                       | false                            |
+| reset_ratings                        | false                            |
+| precheck_default_rule_level          | warn                             |
+| ignore_language_directory_validation | false                            |
+| precheck_include_in_app_purchases    | true                             |
++--------------------------------------+----------------------------------+
+
+[20:02:39]: [33mWill begin uploading snapshots for '1.0' on App Store Connect[0m
+[20:02:39]: Starting with the upload of screenshots...
+[20:02:40]: [31mFailed to delete screenshot en-US APP_IPHONE_67 - (0.157325103 secs)[0m
+[20:02:40]: [31mThe request cannot be fulfilled because of the state of another resource. - Can't Delete Screenshot After Submit for review appScreenshots[0m
+[20:02:40]: [33mNumber of screenshots not deleted: 6[0m
+[20:02:40]: [31mFailed to delete all screenshots... Tries remaining: 4[0m
+[20:02:40]: [31mFailed to delete screenshot en-US APP_IPHONE_67 - (0.147502832 secs)[0m
+[20:02:40]: [31mThe request cannot be fulfilled because of the state of another resource. - Can't Delete Screenshot After Submit for review appScreenshots[0m
+[20:02:40]: [33mNumber of screenshots not deleted: 6[0m
+[20:02:40]: [31mFailed to delete all screenshots... Tries remaining: 3[0m
+[20:02:41]: [31mFailed to delete screenshot en-US APP_IPHONE_67 - (0.147291418 secs)[0m
+[20:02:41]: [31mThe request cannot be fulfilled because of the state of another resource. - Can't Delete Screenshot After Submit for review appScreenshots[0m
+[20:02:41]: [33mNumber of screenshots not deleted: 6[0m
+[20:02:41]: [31mFailed to delete all screenshots... Tries remaining: 2[0m
+[20:02:41]: [31mFailed to delete screenshot en-US APP_IPHONE_67 - (0.163358229 secs)[0m
+[20:02:41]: [31mThe request cannot be fulfilled because of the state of another resource. - Can't Delete Screenshot After Submit for review appScreenshots[0m
+[20:02:41]: [33mNumber of screenshots not deleted: 6[0m
+[20:02:41]: [31mFailed to delete all screenshots... Tries remaining: 1[0m
+[20:02:42]: [31mFailed to delete screenshot en-US APP_IPHONE_67 - (0.144509825 secs)[0m
+[20:02:42]: [31mThe request cannot be fulfilled because of the state of another resource. - Can't Delete Screenshot After Submit for review appScreenshots[0m
+[20:02:42]: [33mNumber of screenshots not deleted: 6[0m
+[31m
+[!] Failed verification of all screenshots deleted... 6 screenshot(s) still exist[0m
