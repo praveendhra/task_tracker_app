@@ -12,7 +12,7 @@ class DemoAuthService implements AuthService {
       : _user = signedIn ? _demoUser : null;
 
   static const _demoUser =
-      AppUser(uid: 'demo', email: 'demo@task.app', displayName: 'Pravii');
+      AppUser(uid: 'demo', email: 'demo@task.app', displayName: 'Alex');
 
   final _controller = StreamController<AppUser?>.broadcast();
   AppUser? _user;
@@ -37,7 +37,7 @@ class DemoAuthService implements AuthService {
     if (password.length < 6) {
       throw const AuthFailure('Email or password is incorrect.');
     }
-    _set(AppUser(uid: 'demo', email: email, displayName: 'Pravii'));
+    _set(AppUser(uid: 'demo', email: email, displayName: 'Alex'));
   }
 
   @override
@@ -65,6 +65,25 @@ class DemoAuthService implements AuthService {
 
   @override
   Future<void> signOut() async => _set(null);
+
+  @override
+  bool get supportsApple => false;
+
+  @override
+  Future<void> signInWithApple() async => _set(_demoUser);
+
+  @override
+  String? get primaryProvider => 'password';
+
+  @override
+  Future<void> reauthenticate({String? password}) async {
+    if ((password ?? '').length < 6) {
+      throw const AuthFailure('Email or password is incorrect.');
+    }
+  }
+
+  @override
+  Future<void> deleteAccount() async => _set(null);
 }
 
 class DemoTaskRepository extends TaskRepository {
@@ -97,6 +116,12 @@ class DemoTaskRepository extends TaskRepository {
   Future<void> saveSettings(UserSettings settings) async => _settings = settings;
 
   @override
+  Future<void> deleteAllData() async {
+    _tasks.clear();
+    _controller.add(_snapshot);
+  }
+
+  @override
   Future<void> delete(String taskId) async {
     _tasks.remove(taskId);
     _controller.add(_snapshot);
@@ -119,20 +144,19 @@ class DemoTaskRepository extends TaskRepository {
     return [
       Task(
         id: 'migrate',
-        title: 'Migrate BackupCare pipelines to GitHub Actions',
+        title: 'Plan the kitchen renovation',
         description:
-            'Move the remaining Azure DevOps build and release pipelines over, '
-            'keeping environment approvals intact.',
+            'Get quotes, pick materials and book the contractor before spring.',
         status: p,
         priority: Priority.high,
         dueDate: today.add(const Duration(days: 2)),
-        tags: const ['work', 'devops'],
+        tags: const ['home', 'project'],
         steps: [
-          s('m1', 'Inventory the ADO pipelines', d, '14 pipelines, 3 unused'),
-          s('m2', 'Port build pipelines', d, 'Reusable workflow for .NET'),
-          s('m3', 'Port release pipelines with approvals', p,
-              'Waiting on environment owners', 1),
-          s('m4', 'Cut over and archive ADO', n, '', 2),
+          s('m1', 'Measure the space', d, 'Floor plan saved to photos'),
+          s('m2', 'Collect three quotes', d, 'Cheapest is not the fastest'),
+          s('m3', 'Choose cabinets and countertops', p,
+              'Visit showroom Saturday', 1),
+          s('m4', 'Book the contractor', n, '', 2),
         ],
         currentStepId: 'm3',
         createdAt: ago(240),
@@ -140,16 +164,16 @@ class DemoTaskRepository extends TaskRepository {
       ),
       Task(
         id: 'sql',
-        title: 'Rotate SQL Managed Instance credentials',
-        description: 'Quarterly rotation for the reporting and app logins.',
+        title: 'Prepare quarterly report',
+        description: 'Numbers, highlights and next quarter goals for the team.',
         status: n,
         priority: Priority.medium,
         dueDate: today.subtract(const Duration(days: 1)),
-        tags: const ['work', 'security'],
+        tags: const ['work', 'report'],
         steps: [
-          s('q1', 'Generate new secrets in Key Vault', n, '', -1),
-          s('q2', 'Update app settings', n),
-          s('q3', 'Verify connections and revoke old logins', n),
+          s('q1', 'Pull the sales numbers', n, '', -1),
+          s('q2', 'Draft the summary slides', n),
+          s('q3', 'Review with manager', n),
         ],
         createdAt: ago(100),
         updatedAt: ago(30),
@@ -164,7 +188,7 @@ class DemoTaskRepository extends TaskRepository {
         tags: const ['personal'],
         steps: [
           s('p1', 'Pick the three projects to feature', d),
-          s('p2', 'Write project blurbs', p, 'Momentum done, two to go', 0),
+          s('p2', 'Write project blurbs', p, 'One done, two to go', 0),
           s('p3', 'Ship it', n),
         ],
         currentStepId: 'p2',
@@ -178,7 +202,7 @@ class DemoTaskRepository extends TaskRepository {
         tags: const ['home'],
         dueDate: today.add(const Duration(days: 4)),
         steps: [
-          s('g1', 'Rice, dal, curry leaves', n),
+          s('g1', 'Fruit, bread, eggs', n),
           s('g2', 'Coffee beans', n),
         ],
         createdAt: ago(6),
@@ -186,15 +210,15 @@ class DemoTaskRepository extends TaskRepository {
       ),
       Task(
         id: 'terraform',
-        title: 'Publish Terraform modules v2',
-        description: 'Tag the release and update the README examples.',
+        title: 'Renew passport',
+        description: 'Photos, form and appointment.',
         status: d,
         priority: Priority.medium,
-        tags: const ['devops'],
+        tags: const ['personal'],
         steps: [
-          s('t1', 'Bump provider versions', d),
-          s('t2', 'Update examples', d),
-          s('t3', 'Tag v2.0.0', d),
+          s('t1', 'Take new photos', d),
+          s('t2', 'Fill in the form', d),
+          s('t3', 'Submit at the post office', d),
         ],
         createdAt: ago(500),
         updatedAt: ago(26),

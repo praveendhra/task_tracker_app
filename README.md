@@ -16,7 +16,7 @@ Break work into steps and see exactly where everything stands. Flutter app for w
 |---|---|
 | UI | Flutter (Material 3), `lib/screens`, `lib/widgets` |
 | State | `AppController` (`lib/app_controller.dart`), a `ChangeNotifier` exposed through `AppScope` |
-| Auth | Firebase Authentication, email and password |
+| Auth | Firebase Authentication: email and password, Google, Apple (iOS) |
 | Database | Cloud Firestore, one document per task |
 | Hosting | GitHub Pages from [`task_tracker_live`](https://github.com/praveendhra/task_tracker_live) |
 
@@ -64,6 +64,10 @@ The sender defaults to `Task Tracker <tasks@mail.praveendhra.com>` (the domain i
 To test: Actions → Daily email → Run workflow, put your email in *force_email* (and tick *dry_run* to only log it). Preview the template locally with `cd tool/daily_email && npm i && node preview.mjs`.
 
 GitHub pauses scheduled workflows in repos with no activity for 60 days; any push re-enables it.
+
+## Mobile apps
+
+Android (`com.pravii_corp.task_tracker`) and iOS (`com.pravii.taskTrackerApp`) build from the same code. CI builds both on every pull request; **Android release** and **iOS release** workflows sign and upload to the Play internal track and TestFlight. Setup steps: [`store/RELEASE.md`](store/RELEASE.md). Listing text, privacy answers and screenshots: [`store/listing.md`](store/listing.md). The privacy policy and account-deletion pages are `web/privacy.html` and `web/delete-account.html`.
 
 ## Develop
 

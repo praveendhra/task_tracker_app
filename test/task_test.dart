@@ -113,7 +113,7 @@ void main() {
       expect(app.tasksLoaded, isTrue);
       expect(app.archivedTasks.length, 1);
       expect(app.filtered(TaskFilter.done).every((t) => t.isDone), isTrue);
-      expect(app.search('ado pipelines').map((t) => t.id), contains('migrate'));
+      expect(app.search('contractor').map((t) => t.id), contains('migrate'));
 
       final sql = app.taskById('sql')!;
       await app.cycleStatus(sql);

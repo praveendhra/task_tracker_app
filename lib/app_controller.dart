@@ -294,6 +294,16 @@ class AppController extends ChangeNotifier {
     await _repo?.saveSettings(s);
   }
 
+  /// Permanently deletes the signed-in user's data and account.
+  /// Confirms identity first so nothing is removed if that fails.
+  Future<void> deleteAccount({String? password}) async {
+    await auth.reauthenticate(password: password);
+    await _taskSub?.cancel();
+    _taskSub = null;
+    await _repo?.deleteAllData();
+    await auth.deleteAccount();
+  }
+
   @override
   void dispose() {
     _authSub?.cancel();

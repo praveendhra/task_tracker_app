@@ -54,6 +54,8 @@ class _HomeScreenState extends State<HomeScreen> {
         showShortcutsHelp(context);
       case 'settings':
         showSettings(context);
+      case 'delete':
+        confirmDeleteAccount(context);
       case 'archive':
         _openArchive();
       case 'search':
@@ -1010,6 +1012,11 @@ class AccountButton extends StatelessWidget {
           leadingIcon: const Icon(Icons.logout_rounded),
           onPressed: app.auth.signOut,
           child: const Text('Sign out'),
+        ),
+        MenuItemButton(
+          leadingIcon: Icon(Icons.delete_forever_outlined, color: scheme.danger),
+          onPressed: () => confirmDeleteAccount(context),
+          child: Text('Delete account', style: TextStyle(color: scheme.danger)),
         ),
       ],
       builder: (context, menu, _) => IconButton(
