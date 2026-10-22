@@ -42,14 +42,16 @@ class FirebaseAuthService implements AuthService {
 
   @override
   bool get supportsApple =>
-      !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+      kIsWeb || defaultTargetPlatform == TargetPlatform.iOS;
 
   @override
   Future<void> signInWithApple() => _guard(() async {
         final provider = AppleAuthProvider()
           ..addScope('email')
           ..addScope('name');
-        final cred = await _auth.signInWithProvider(provider);
+        final cred = kIsWeb
+            ? await _auth.signInWithPopup(provider)
+            : await _auth.signInWithProvider(provider);
         // Apple shares the name only on the very first sign-in.
         final user = cred.user;
         final name = cred.additionalUserInfo?.profile?['name'];
@@ -83,7 +85,11 @@ class FirebaseAuthService implements AuthService {
             await user.reauthenticateWithCredential(EmailAuthProvider.credential(
                 email: user.email ?? '', password: password ?? ''));
           case 'apple.com':
-            await user.reauthenticateWithProvider(AppleAuthProvider());
+            if (kIsWeb) {
+              await user.reauthenticateWithPopup(AppleAuthProvider());
+            } else {
+              await user.reauthenticateWithProvider(AppleAuthProvider());
+            }
           default:
             final google = GoogleAuthProvider();
             if (kIsWeb) {

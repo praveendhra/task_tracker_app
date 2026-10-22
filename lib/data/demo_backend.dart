@@ -67,7 +67,7 @@ class DemoAuthService implements AuthService {
   Future<void> signOut() async => _set(null);
 
   @override
-  bool get supportsApple => false;
+  bool get supportsApple => true;
 
   @override
   Future<void> signInWithApple() async => _set(_demoUser);

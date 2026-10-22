@@ -1,0 +1,86 @@
+name: App Store listing
+
+# Uploads the App Store text (store/appstore/metadata) and fresh screenshots
+# rendered from the demo build to App Store Connect. Does not submit for review.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['store/appstore/**']
+
+permissions:
+  contents: write
+
+jobs:
+  listing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build web --release --base-href / --dart-define=DEMO=true -o build/demo
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Render iPhone screenshots
+        run: |
+          npm i --no-save playwright@1
+          npx playwright install --with-deps chromium
+          (cd build/demo && python3 -m http.server 8080 >/dev/null 2>&1 &)
+          sleep 2
+          node tool/store_screenshots.mjs http://localhost:8080 shots
+          mkdir -p store/appstore/screenshots/en-US
+          cp shots/iphone-*.png store/appstore/screenshots/en-US/
+          ls -l store/appstore/screenshots/en-US
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+      - run: gem install fastlane -N
+
+      - name: Upload listing to App Store Connect
+        env:
+          ISSUER: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_IDENTIFIER }}
+          KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+        run: |
+          set -o pipefail
+          # Normalise the key: strip CRs/blank lines and add PEM headers if the
+          # secret holds only the body.
+          BODY=$(printf '%s\n' "$KEY" | tr -d '\r' | grep -v -e '-----' | tr -d ' \n\t')
+          echo "Key has PEM header: $(printf '%s' "$KEY" | grep -c 'BEGIN PRIVATE KEY'), body length: ${#BODY}"
+          PEM=$(printf -- '-----BEGIN PRIVATE KEY-----\n%s\n-----END PRIVATE KEY-----\n' "$(printf '%s' "$BODY" | fold -w 64)")
+          KEY_B64=$(printf '%s' "$PEM" | base64 -w0)
+          jq -n --arg k "$KEY_ID" --arg i "$ISSUER" --arg p "$KEY_B64" \
+            '{key_id:$k, issuer_id:$i, key:$p, is_key_content_base64:true, in_house:false}' > "$RUNNER_TEMP/asc.json"
+          echo 'skip_binary_upload(true)' > Deliverfile
+          export FASTLANE_OPT_OUT_USAGE=1
+          common=(--api_key_path "$RUNNER_TEMP/asc.json" --app_identifier com.pravii.taskTrackerApp
+                  --platform ios --app_version 1.0 --skip_binary_upload true --skip_app_version_update true
+                  --submit_for_review false --run_precheck_before_submit false --force true)
+          # Text. fastlane errors with "No data" when nothing changed, so a
+          # failure here is only a warning.
+          set +e
+          fastlane deliver "${common[@]}" --skip_screenshots true \
+            --metadata_path store/appstore/metadata \
+            --app_rating_config_path store/appstore/age_rating.json 2>&1 | tee "$RUNNER_TEMP/deliver.log"
+          [ "${PIPESTATUS[0]}" = 0 ] || echo "::warning::Metadata step reported an error (often just 'no changes'). See ci-release-logs-listing."
+          set -e
+          # Screenshots.
+          fastlane deliver "${common[@]}" --skip_metadata true \
+            --screenshots_path store/appstore/screenshots --overwrite_screenshots true 2>&1 | tee "$RUNNER_TEMP/screenshots.log"
+
+      - name: Publish log to ci-release-logs branch
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/logs" && cd "$RUNNER_TEMP/logs"
+          # Copy logs with anything key-like stripped out.
+          for f in "$RUNNER_TEMP"/*.log; do [ -f "$f" ] && grep -v -E 'PRIVATE KEY|[A-Za-z0-9+/=]{40,}' "$f" > "$(basename "$f")"; done || true
+          git init -q -b ci-release-logs
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -qm "logs ${GITHUB_SHA::7}" --allow-empty
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:ci-release-logs-${{ github.workflow == 'iOS release' && 'ios' || 'listing' }}
