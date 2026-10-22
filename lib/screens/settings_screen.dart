@@ -179,7 +179,7 @@ class SettingsScreen extends StatelessWidget {
                 leading: Icon(Icons.delete_forever_outlined, color: scheme.danger),
                 title: Text('Delete account', style: TextStyle(color: scheme.danger)),
                 subtitle: const Text('Permanently remove your account and all tasks'),
-                onTap: () => _confirmDeleteAccount(context),
+                onTap: () => confirmDeleteAccount(context),
               ),
             ]),
           ),
@@ -250,7 +250,7 @@ class _TimezonePickerState extends State<_TimezonePicker> {
   }
 }
 
-Future<void> _confirmDeleteAccount(BuildContext context) async {
+Future<void> confirmDeleteAccount(BuildContext context) async {
   final app = AppScope.read(context);
   final scheme = Theme.of(context).colorScheme;
   final needsPassword = app.auth.primaryProvider == 'password';

@@ -32,6 +32,8 @@ const shots = [
   ['desktop', 'light', 'screen=shortcuts', 'shortcuts'],
   ['desktop', 'light', 'screen=settings', 'settings'],
   ['phone', 'light', 'screen=settings', 'settings'],
+  ['phone', 'light', 'screen=delete', 'delete-account'],
+  ['desktop', 'dark', 'screen=delete', 'delete-account'],
 ];
 
 const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'] });
