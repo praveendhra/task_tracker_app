@@ -5,8 +5,8 @@ name: App Store listing
 on:
   workflow_dispatch:
   push:
-    branches: [main]
-    paths: ['store/appstore/**']
+    branches: [main, appstore-listing]
+    paths: ['store/appstore/**', '.github/workflows/appstore-listing.yml']
 
 permissions:
   contents: read
