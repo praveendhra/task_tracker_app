@@ -49,7 +49,6 @@ jobs:
           KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
         run: |
           set -o pipefail
-          # Normalise the .p8 (strip CR and blank lines) and pass it base64-encoded.
           # Normalise the key: strip CRs/blank lines and add PEM headers if the
           # secret holds only the body.
           BODY=$(printf '%s\n' "$KEY" | tr -d '\r' | grep -v -e '-----' | tr -d ' \n\t')
@@ -60,20 +59,20 @@ jobs:
             '{key_id:$k, issuer_id:$i, key:$p, is_key_content_base64:true, in_house:false}' > "$RUNNER_TEMP/asc.json"
           echo 'skip_binary_upload(true)' > Deliverfile
           export FASTLANE_OPT_OUT_USAGE=1
-          fastlane deliver \
-            --api_key_path "$RUNNER_TEMP/asc.json" \
-            --app_identifier com.pravii.taskTrackerApp \
-            --platform ios \
-            --app_version 1.0 \
+          common=(--api_key_path "$RUNNER_TEMP/asc.json" --app_identifier com.pravii.taskTrackerApp
+                  --platform ios --app_version 1.0 --skip_binary_upload true --skip_app_version_update true
+                  --submit_for_review false --run_precheck_before_submit false --force true)
+          # Text. fastlane errors with "No data" when nothing changed, so a
+          # failure here is only a warning.
+          set +e
+          fastlane deliver "${common[@]}" --skip_screenshots true \
             --metadata_path store/appstore/metadata \
-            --screenshots_path store/appstore/screenshots \
-            --app_rating_config_path store/appstore/age_rating.json \
-            --overwrite_screenshots true \
-            --skip_binary_upload true \
-            --skip_app_version_update true \
-            --submit_for_review false \
-            --run_precheck_before_submit false \
-            --force true 2>&1 | tee "$RUNNER_TEMP/deliver.log"
+            --app_rating_config_path store/appstore/age_rating.json 2>&1 | tee "$RUNNER_TEMP/deliver.log"
+          [ "${PIPESTATUS[0]}" = 0 ] || echo "::warning::Metadata step reported an error (often just 'no changes'). See ci-release-logs-listing."
+          set -e
+          # Screenshots.
+          fastlane deliver "${common[@]}" --skip_metadata true \
+            --screenshots_path store/appstore/screenshots --overwrite_screenshots true 2>&1 | tee "$RUNNER_TEMP/screenshots.log"
 
       - name: Publish log to ci-release-logs branch
         if: always()
