@@ -49,8 +49,10 @@ jobs:
           KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
         run: |
           set -o pipefail
-          jq -n --arg k "$KEY_ID" --arg i "$ISSUER" --arg p "$KEY" \
-            '{key_id:$k, issuer_id:$i, key:$p, in_house:false}' > "$RUNNER_TEMP/asc.json"
+          # Normalise the .p8 (strip CR and blank lines) and pass it base64-encoded.
+          KEY_B64=$(printf '%s\n' "$KEY" | tr -d '\r' | sed '/^[[:space:]]*$/d' | base64 -w0)
+          jq -n --arg k "$KEY_ID" --arg i "$ISSUER" --arg p "$KEY_B64" \
+            '{key_id:$k, issuer_id:$i, key:$p, is_key_content_base64:true, in_house:false}' > "$RUNNER_TEMP/asc.json"
           echo 'skip_binary_upload(true)' > Deliverfile
           export FASTLANE_OPT_OUT_USAGE=1
           fastlane deliver \
