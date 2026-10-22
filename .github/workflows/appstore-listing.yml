@@ -1,0 +1,66 @@
+name: App Store listing
+
+# Uploads the App Store text (store/appstore/metadata) and fresh screenshots
+# rendered from the demo build to App Store Connect. Does not submit for review.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['store/appstore/**']
+
+permissions:
+  contents: read
+
+jobs:
+  listing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build web --release --base-href / --dart-define=DEMO=true -o build/demo
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Render iPhone screenshots
+        run: |
+          npm i --no-save playwright@1
+          npx playwright install --with-deps chromium
+          (cd build/demo && python3 -m http.server 8080 >/dev/null 2>&1 &)
+          sleep 2
+          node tool/store_screenshots.mjs http://localhost:8080 shots
+          mkdir -p store/appstore/screenshots/en-US
+          cp shots/iphone-*.png store/appstore/screenshots/en-US/
+          ls -l store/appstore/screenshots/en-US
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+      - run: gem install fastlane -N
+
+      - name: Upload listing to App Store Connect
+        env:
+          ISSUER: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_IDENTIFIER }}
+          KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+        run: |
+          jq -n --arg k "$KEY_ID" --arg i "$ISSUER" --arg p "$KEY" \
+            '{key_id:$k, issuer_id:$i, key:$p, in_house:false}' > "$RUNNER_TEMP/asc.json"
+          fastlane deliver \
+            --api_key_path "$RUNNER_TEMP/asc.json" \
+            --app_identifier com.pravii.taskTrackerApp \
+            --platform ios \
+            --app_version 1.0 \
+            --metadata_path store/appstore/metadata \
+            --screenshots_path store/appstore/screenshots \
+            --app_rating_config_path store/appstore/age_rating.json \
+            --overwrite_screenshots true \
+            --skip_binary_upload true \
+            --skip_app_version_update true \
+            --submit_for_review false \
+            --run_precheck_before_submit false \
+            --force true

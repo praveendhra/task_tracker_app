@@ -1,0 +1,29 @@
+Task Tracker helps you finish things by breaking them into steps and always showing the next one.
+
+STEP BY STEP
+• Add a task with as many steps as you need, each with its own note and due date
+• Mark the current step and see progress at a glance
+• Reorder steps while you plan, not only after
+
+STAY ON TOP OF DATES
+• Due dates and priorities on every task, with overdue items floated to the top
+• Views for Active, Due today, Upcoming and Done
+• Tags and four sort orders to slice your list your way
+
+FAST
+• Quick add: type "Call plumber fri #home !high" and the date, tag and priority are filled in for you
+• Swipe to complete or archive
+• Full-text search across titles, steps, notes and tags
+
+DAILY SUMMARY
+• Optional morning email at the hour you choose, in your time zone
+• High-priority work first, then overdue, due today, steps due and in progress
+
+EVERYWHERE
+• Syncs instantly between your iPhone and the web app at task.praveendhra.com
+• Works offline and catches up when you're back online
+• Light and dark themes
+
+PRIVATE
+• No ads, no tracking, no data sold
+• Delete your account and all data from Settings at any time
