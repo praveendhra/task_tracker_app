@@ -51,6 +51,8 @@ jobs:
           set -o pipefail
           jq -n --arg k "$KEY_ID" --arg i "$ISSUER" --arg p "$KEY" \
             '{key_id:$k, issuer_id:$i, key:$p, in_house:false}' > "$RUNNER_TEMP/asc.json"
+          echo 'skip_binary_upload(true)' > Deliverfile
+          export FASTLANE_OPT_OUT_USAGE=1
           fastlane deliver \
             --api_key_path "$RUNNER_TEMP/asc.json" \
             --app_identifier com.pravii.taskTrackerApp \
