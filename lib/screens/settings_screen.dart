@@ -218,7 +218,7 @@ class _TimezonePickerState extends State<_TimezonePicker> {
       height: MediaQuery.sizeOf(context).height * 0.75,
       child: Column(children: [
         Padding(
-          padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
           child: TextField(
             autofocus: true,
             onChanged: (v) => setState(() => _q = v),
@@ -262,7 +262,9 @@ Future<void> confirmDeleteAccount(BuildContext context) async {
     context: context,
     builder: (context) => AlertDialog(
       title: const Text('Delete your account?'),
-      content: Column(
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 380),
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -281,6 +283,7 @@ Future<void> confirmDeleteAccount(BuildContext context) async {
           else
             const Text("You'll be asked to sign in again to confirm it's you."),
         ],
+      ),
       ),
       actions: [
         TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
