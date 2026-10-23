@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:task_tracker_app/app_controller.dart';
 import 'package:task_tracker_app/data/demo_backend.dart';
+import 'package:task_tracker_app/models/user_settings.dart';
+import 'package:task_tracker_app/platform/push.dart';
 import 'package:task_tracker_app/data/firebase_backend.dart';
 import 'package:task_tracker_app/models/task.dart';
 
@@ -120,6 +122,45 @@ void main() {
       expect(app.taskById('sql')!.isDone, isTrue);
       expect(app.taskById('sql')!.steps.every((s) => s.isDone), isTrue);
       app.dispose();
+    });
+  });
+
+  group('Push reminders', () {
+    test('settings round-trip with defaults and clamping', () {
+      expect(UserSettings.fromMap(null).pushReminders, isFalse);
+      final d = UserSettings.fromMap({});
+      expect([d.pushEvery, d.pushFrom, d.pushTo], [1, 9, 21]);
+      final s = UserSettings.fromMap({'pushReminders': true, 'pushEvery': 99, 'pushFrom': -3, 'pushTo': 40});
+      expect([s.pushReminders, s.pushEvery, s.pushFrom, s.pushTo], [true, 12, 0, 23]);
+      final again = UserSettings.fromMap(s.copyWith(pushEvery: 3).toMap());
+      expect(again.pushEvery, 3);
+      expect(again.pushReminders, isTrue);
+    });
+
+    test('enable asks permission; declining leaves reminders off', () async {
+      final ok = AppController(
+        auth: DemoAuthService(),
+        repositoryFor: (_) => DemoTaskRepository(),
+        push: FakePushService(),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await ok.saveSettings(ok.settings.copyWith(pushReminders: false));
+      expect(await ok.enablePushReminders(), isNull);
+      expect(ok.settings.pushReminders, isTrue);
+      await ok.disablePushReminders();
+      expect(ok.settings.pushReminders, isFalse);
+      ok.dispose();
+
+      final denied = AppController(
+        auth: DemoAuthService(),
+        repositoryFor: (_) => DemoTaskRepository(),
+        push: FakePushService(grant: false),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await denied.saveSettings(denied.settings.copyWith(pushReminders: false));
+      expect(await denied.enablePushReminders(), contains('blocked'));
+      expect(denied.settings.pushReminders, isFalse);
+      denied.dispose();
     });
   });
 }

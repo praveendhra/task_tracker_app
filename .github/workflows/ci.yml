@@ -31,11 +31,11 @@ jobs:
       - run: flutter pub get
       - run: flutter analyze --no-fatal-infos
       - run: flutter test
-      - name: Daily email tests
-        run: node --test tool/daily_email/email.test.mjs
+      - name: Daily email and push reminder tests
+        run: node --test tool/daily_email/email.test.mjs tool/daily_email/push.test.mjs
 
       - name: Build web (production)
-        run: flutter build web --release --base-href /
+        run: flutter build web --release --base-href / --dart-define=FCM_VAPID_KEY=${{ vars.FCM_VAPID_KEY }}
 
       - uses: actions/upload-artifact@v4
         with:

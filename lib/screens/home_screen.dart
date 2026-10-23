@@ -1010,7 +1010,7 @@ class AccountButton extends StatelessWidget {
         const Divider(),
         MenuItemButton(
           leadingIcon: const Icon(Icons.logout_rounded),
-          onPressed: app.auth.signOut,
+          onPressed: app.signOut,
           child: const Text('Sign out'),
         ),
         MenuItemButton(

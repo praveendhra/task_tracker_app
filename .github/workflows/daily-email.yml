@@ -1,5 +1,7 @@
 name: Daily email
 
+# Also sends hourly push reminders (tool/daily_email/send-push.mjs).
+
 # Each user gets one email a day at their chosen local hour.
 #
 # The real clock is the Cloudflare Worker in cloudflare/email-trigger, which
@@ -14,6 +16,9 @@ on:
     inputs:
       force_email:
         description: 'Send now to this account (email address), ignoring the hour'
+        required: false
+      force_push:
+        description: 'Send a push reminder now to this account (email address)'
         required: false
       dry_run:
         description: 'Only log what would be sent'
@@ -47,4 +52,12 @@ jobs:
           MAIL_FROM: ${{ vars.MAIL_FROM || 'Task Tracker <tasks@mail.praveendhra.com>' }}
           APP_URL: https://task.praveendhra.com
           FORCE_EMAIL: ${{ inputs.force_email }}
+          DRY_RUN: ${{ inputs.dry_run && 'true' || '' }}
+      - name: Push reminders
+        if: always()
+        run: node send-push.mjs
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          APP_URL: https://task.praveendhra.com
+          FORCE_PUSH: ${{ inputs.force_push }}
           DRY_RUN: ${{ inputs.dry_run && 'true' || '' }}
