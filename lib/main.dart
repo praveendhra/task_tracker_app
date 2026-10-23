@@ -8,6 +8,7 @@ import 'config.dart';
 import 'data/demo_backend.dart';
 import 'data/firebase_backend.dart';
 import 'firebase_options.dart';
+import 'platform/reminders.dart';
 import 'screens/auth_screen.dart';
 import 'screens/home_screen.dart';
 import 'theme.dart';
@@ -21,6 +22,7 @@ Future<void> main() async {
     controller = AppController(
       auth: DemoAuthService(signedIn: demoParams['screen'] != 'auth'),
       repositoryFor: (_) => DemoTaskRepository(),
+      reminders: FakeReminderScheduler(),
     );
     final theme = demoParams['theme'];
     if (theme == 'dark') controller.setThemeMode(ThemeMode.dark);
@@ -36,6 +38,7 @@ Future<void> main() async {
     controller = AppController(
       auth: FirebaseAuthService(FirebaseAuth.instance),
       repositoryFor: (user) => FirestoreTaskRepository(db, user.uid),
+      reminders: LocalReminderScheduler(),
     );
   }
 

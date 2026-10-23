@@ -65,6 +65,12 @@ To test: Actions → Daily email → Run workflow, put your email in *force_emai
 
 GitHub pauses scheduled workflows in repos with no activity for 60 days; any push re-enables it.
 
+## Task reminders (iPhone)
+
+On iPhone, Settings > **Reminders** turns on a simple nudge, "Time to check your tasks", that opens the app when tapped. Users pick how often (every 1-6 hours) and the hours (default every hour, 9 AM to 9 PM).
+
+They're local notifications scheduled with `flutter_local_notifications`, one per hour slot, repeating daily in the phone's time zone (`lib/models/reminders.dart`, `lib/platform/reminders.dart`). No server, push key or task data is involved, so they never go stale. They're rescheduled when the settings change and cleared on sign-out. The section is hidden on the web and Android.
+
 ## Mobile apps
 
 Android (`com.pravii_corp.task_tracker`) and iOS (`com.pravii.taskTrackerApp`) build from the same code. CI builds both on every pull request; **Android release** and **iOS release** workflows sign and upload to the Play internal track and TestFlight. Setup steps: [`store/RELEASE.md`](store/RELEASE.md). Listing text, privacy answers and screenshots: [`store/listing.md`](store/listing.md). The privacy policy and account-deletion pages are `web/privacy.html` and `web/delete-account.html`.

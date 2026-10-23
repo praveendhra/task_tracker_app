@@ -6,6 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'data/repository.dart';
 import 'models/task.dart';
 import 'models/user_settings.dart';
+import 'models/reminders.dart';
+import 'platform/reminders.dart';
 import 'platform/timezone.dart';
 
 enum TaskFilter { active, today, upcoming, done, all }
@@ -17,12 +19,18 @@ class AppController extends ChangeNotifier {
   AppController({
     required this.auth,
     required TaskRepository Function(AppUser user) repositoryFor,
-  }) : _repositoryFor = repositoryFor {
+    ReminderScheduler? reminders,
+  })  : _repositoryFor = repositoryFor,
+        reminders = reminders ?? FakeReminderScheduler(supported: false) {
     _authSub = auth.userChanges.listen(_onUser);
     _loadPrefs();
   }
 
   final AuthService auth;
+
+  /// On-device reminder notifications (iPhone).
+  final ReminderScheduler reminders;
+  Timer? _replanTimer;
   final TaskRepository Function(AppUser user) _repositoryFor;
 
   StreamSubscription<AppUser?>? _authSub;
@@ -286,11 +294,63 @@ class AppController extends ChangeNotifier {
     }
     settings = s;
     notifyListeners();
+    _scheduleReplan();
+  }
+
+  /// Reschedules the phone's reminders shortly after a settings change, so
+  /// flicking through the dropdowns only reschedules once.
+  void _scheduleReplan() {
+    if (!reminders.supported) return;
+    _replanTimer?.cancel();
+    _replanTimer = Timer(const Duration(seconds: 2), replanReminders);
+  }
+
+  /// Replaces the scheduled reminders (or clears them when turned off).
+  Future<void> replanReminders() async {
+    if (!reminders.supported) return;
+    try {
+      if (user == null || !settings.pushReminders) {
+        await reminders.cancelAll();
+      } else {
+        await reminders.schedule(dailyReminders(settings));
+      }
+    } catch (e) {
+      debugPrint('Could not schedule reminders: $e');
+    }
+  }
+
+  /// Turns reminders on: asks for permission, then schedules them.
+  /// Returns an error message to show, or null on success.
+  Future<String?> enablePushReminders() async {
+    if (!reminders.supported) return 'Reminders are only available on iPhone.';
+    if (!await reminders.requestPermission()) {
+      return 'Notifications are off for Task Tracker. Turn them on in '
+          'Settings > Notifications > Task Tracker, then try again.';
+    }
+    await saveSettings(settings.copyWith(pushReminders: true));
+    await replanReminders();
+    return null;
+  }
+
+  Future<void> disablePushReminders() async {
+    await saveSettings(settings.copyWith(pushReminders: false));
+    await replanReminders();
+  }
+
+  /// Signs out and clears this phone's reminders so the next person to use
+  /// it doesn't get them.
+  Future<void> signOut() async {
+    _replanTimer?.cancel();
+    try {
+      await reminders.cancelAll();
+    } catch (_) {}
+    await auth.signOut();
   }
 
   Future<void> saveSettings(UserSettings s) async {
     settings = s;
     notifyListeners();
+    _scheduleReplan();
     await _repo?.saveSettings(s);
   }
 
@@ -306,6 +366,7 @@ class AppController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _replanTimer?.cancel();
     _authSub?.cancel();
     _taskSub?.cancel();
     super.dispose();

@@ -106,8 +106,8 @@ class DemoTaskRepository extends TaskRepository {
     _controller.add(_snapshot);
   }
 
-  UserSettings _settings =
-      const UserSettings(dailyEmail: true, timezone: 'America/New_York');
+  UserSettings _settings = const UserSettings(
+      dailyEmail: true, timezone: 'America/New_York', pushReminders: true);
 
   @override
   Future<UserSettings> loadSettings() async => _settings;

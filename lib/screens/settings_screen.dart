@@ -131,6 +131,11 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 28),
+          if (app.reminders.supported) ...[
+            const SectionLabel('Reminders'),
+            const _PushRemindersCard(),
+            const SizedBox(height: 28),
+          ],
           const SectionLabel('Appearance'),
           Card(
             child: Padding(
@@ -305,5 +310,119 @@ Future<void> confirmDeleteAccount(BuildContext context) async {
     messenger.showSnackBar(SnackBar(content: Text(e.message)));
   } catch (e) {
     messenger.showSnackBar(SnackBar(content: Text('Could not delete the account: $e')));
+  }
+}
+
+/// Push reminder settings: on/off, how often, and the hours they may arrive.
+class _PushRemindersCard extends StatefulWidget {
+  const _PushRemindersCard();
+
+  @override
+  State<_PushRemindersCard> createState() => _PushRemindersCardState();
+}
+
+class _PushRemindersCardState extends State<_PushRemindersCard> {
+  bool _busy = false;
+
+  Future<void> _toggle(bool on) async {
+    final app = AppScope.read(context);
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _busy = true);
+    try {
+      if (on) {
+        final error = await app.enablePushReminders();
+        if (error != null) messenger.showSnackBar(SnackBar(content: Text(error)));
+      } else {
+        await app.disablePushReminders();
+      }
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Could not update reminders: $e')));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final app = AppScope.of(context);
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final s = app.settings;
+    final supported = app.reminders.supported;
+    final on = s.pushReminders;
+    void update(UserSettings next) => app.saveSettings(next);
+
+    String every(int n) => n == 1 ? 'Every hour' : 'Every $n hours';
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Card(
+        child: Column(children: [
+          SwitchListTile(
+            value: on && supported,
+            onChanged: supported && !_busy ? _toggle : null,
+            secondary: _busy
+                ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
+                : Icon(Icons.notifications_active_outlined, color: scheme.primary),
+            title: const Text('Task reminders'),
+            subtitle: Text(supported
+                ? '${every(s.pushEvery)} from ${formatHour(s.pushFrom)} to ${formatHour(s.pushTo)}, '
+                    'a nudge to check your tasks. Tap it to open the app.'
+                : 'Only available on iPhone.'),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          ),
+          const Divider(indent: 16, endIndent: 16),
+          ListTile(
+            enabled: on && supported,
+            leading: const Icon(Icons.repeat_rounded),
+            title: const Text('How often'),
+            trailing: DropdownButton<int>(
+              value: s.pushEvery,
+              underline: const SizedBox.shrink(),
+              onChanged: on && supported ? (v) => update(s.copyWith(pushEvery: v)) : null,
+              items: [
+                for (final n in const [1, 2, 3, 4, 6])
+                  DropdownMenuItem(value: n, child: Text(every(n))),
+              ],
+            ),
+          ),
+          const Divider(indent: 16, endIndent: 16),
+          ListTile(
+            enabled: on && supported,
+            leading: const Icon(Icons.wb_twilight_rounded),
+            title: const Text('From'),
+            trailing: DropdownButton<int>(
+              value: s.pushFrom,
+              underline: const SizedBox.shrink(),
+              onChanged: on && supported ? (v) => update(s.copyWith(pushFrom: v)) : null,
+              items: [
+                for (var h = 0; h < 24; h++) DropdownMenuItem(value: h, child: Text(formatHour(h))),
+              ],
+            ),
+          ),
+          const Divider(indent: 16, endIndent: 16),
+          ListTile(
+            enabled: on && supported,
+            leading: const Icon(Icons.bedtime_outlined),
+            title: const Text('Until'),
+            trailing: DropdownButton<int>(
+              value: s.pushTo,
+              underline: const SizedBox.shrink(),
+              onChanged: on && supported ? (v) => update(s.copyWith(pushTo: v)) : null,
+              items: [
+                for (var h = 0; h < 24; h++) DropdownMenuItem(value: h, child: Text(formatHour(h))),
+              ],
+            ),
+          ),
+        ]),
+      ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(4, 10, 4, 0),
+        child: Text(
+          'Scheduled on this phone, so nothing is sent anywhere. Repeats every day '
+          'until you turn it off.',
+          style: theme.textTheme.bodySmall?.copyWith(color: scheme.muted),
+        ),
+      ),
+    ]);
   }
 }

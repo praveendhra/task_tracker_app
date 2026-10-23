@@ -3,6 +3,9 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:task_tracker_app/app_controller.dart';
 import 'package:task_tracker_app/data/demo_backend.dart';
+import 'package:task_tracker_app/models/user_settings.dart';
+import 'package:task_tracker_app/models/reminders.dart';
+import 'package:task_tracker_app/platform/reminders.dart';
 import 'package:task_tracker_app/data/firebase_backend.dart';
 import 'package:task_tracker_app/models/task.dart';
 
@@ -120,6 +123,54 @@ void main() {
       expect(app.taskById('sql')!.isDone, isTrue);
       expect(app.taskById('sql')!.steps.every((s) => s.isDone), isTrue);
       app.dispose();
+    });
+  });
+
+  group('Reminders', () {
+    test('settings round-trip with defaults and clamping', () {
+      expect(UserSettings.fromMap(null).pushReminders, isFalse);
+      final d = UserSettings.fromMap({});
+      expect([d.pushEvery, d.pushFrom, d.pushTo], [1, 9, 21]);
+      final s = UserSettings.fromMap({'pushReminders': true, 'pushEvery': 99, 'pushFrom': -3, 'pushTo': 40});
+      expect([s.pushReminders, s.pushEvery, s.pushFrom, s.pushTo], [true, 12, 0, 23]);
+      expect(UserSettings.fromMap(s.copyWith(pushEvery: 3).toMap()).pushEvery, 3);
+    });
+
+    const on = UserSettings(pushReminders: true);
+
+    test('hourly from 9 AM to 9 PM by default', () {
+      expect(reminderHours(on), [for (var h = 9; h <= 21; h++) h]);
+      expect(dailyReminders(on).first.title, 'Time to check your tasks');
+    });
+
+    test('every N hours, windows across midnight, off', () {
+      expect(reminderHours(on.copyWith(pushEvery: 3, pushFrom: 8, pushTo: 20)), [8, 11, 14, 17, 20]);
+      expect(reminderHours(on.copyWith(pushFrom: 22, pushTo: 1)), [22, 23, 0, 1]);
+      expect(reminderHours(on.copyWith(pushFrom: 9, pushTo: 9)), [9]);
+      expect(reminderHours(const UserSettings()), isEmpty);
+    });
+
+    test('controller schedules on enable, clears on disable and sign-out; respects a declined prompt', () async {
+      final fake = FakeReminderScheduler();
+      final app = AppController(auth: DemoAuthService(), repositoryFor: (_) => DemoTaskRepository(), reminders: fake);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(await app.enablePushReminders(), isNull);
+      expect(app.settings.pushReminders, isTrue);
+      expect(fake.scheduled, isNotEmpty);
+      await app.disablePushReminders();
+      expect(fake.scheduled, isEmpty);
+      await app.enablePushReminders();
+      await app.signOut();
+      expect(fake.scheduled, isEmpty);
+      app.dispose();
+
+      final denied = AppController(auth: DemoAuthService(), repositoryFor: (_) => DemoTaskRepository(),
+          reminders: FakeReminderScheduler(grant: false));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await denied.saveSettings(denied.settings.copyWith(pushReminders: false));
+      expect(await denied.enablePushReminders(), contains('Notifications are off'));
+      expect(denied.settings.pushReminders, isFalse);
+      denied.dispose();
     });
   });
 }
