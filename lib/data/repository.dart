@@ -68,10 +68,6 @@ abstract class TaskRepository {
   Future<UserSettings> loadSettings();
   Future<void> saveSettings(UserSettings settings);
 
-  /// Adds or removes a device push token on the user's profile.
-  Future<void> addPushToken(String token);
-  Future<void> removePushToken(String token);
-
   /// Removes every task, the settings and any legacy data for this user.
   Future<void> deleteAllData();
 }

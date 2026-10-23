@@ -209,16 +209,6 @@ class FirestoreTaskRepository extends TaskRepository {
       _userDoc.set(settings.toMap(), SetOptions(merge: true));
 
   @override
-  Future<void> addPushToken(String token) => _userDoc.set({
-        'pushTokens': FieldValue.arrayUnion([token]),
-      }, SetOptions(merge: true));
-
-  @override
-  Future<void> removePushToken(String token) => _userDoc.set({
-        'pushTokens': FieldValue.arrayRemove([token]),
-      }, SetOptions(merge: true));
-
-  @override
   Future<void> deleteAllData() async {
     // Firestore batches hold up to 500 writes.
     final docs = (await _tasks.get()).docs;

@@ -4,7 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:task_tracker_app/app_controller.dart';
 import 'package:task_tracker_app/data/demo_backend.dart';
 import 'package:task_tracker_app/models/user_settings.dart';
-import 'package:task_tracker_app/platform/push.dart';
+import 'package:task_tracker_app/models/reminders.dart';
+import 'package:task_tracker_app/platform/reminders.dart';
 import 'package:task_tracker_app/data/firebase_backend.dart';
 import 'package:task_tracker_app/models/task.dart';
 
@@ -125,40 +126,71 @@ void main() {
     });
   });
 
-  group('Push reminders', () {
+  group('Reminders', () {
     test('settings round-trip with defaults and clamping', () {
       expect(UserSettings.fromMap(null).pushReminders, isFalse);
       final d = UserSettings.fromMap({});
       expect([d.pushEvery, d.pushFrom, d.pushTo], [1, 9, 21]);
       final s = UserSettings.fromMap({'pushReminders': true, 'pushEvery': 99, 'pushFrom': -3, 'pushTo': 40});
       expect([s.pushReminders, s.pushEvery, s.pushFrom, s.pushTo], [true, 12, 0, 23]);
-      final again = UserSettings.fromMap(s.copyWith(pushEvery: 3).toMap());
-      expect(again.pushEvery, 3);
-      expect(again.pushReminders, isTrue);
+      expect(UserSettings.fromMap(s.copyWith(pushEvery: 3).toMap()).pushEvery, 3);
     });
 
-    test('enable asks permission; declining leaves reminders off', () async {
-      final ok = AppController(
-        auth: DemoAuthService(),
-        repositoryFor: (_) => DemoTaskRepository(),
-        push: FakePushService(),
-      );
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-      await ok.saveSettings(ok.settings.copyWith(pushReminders: false));
-      expect(await ok.enablePushReminders(), isNull);
-      expect(ok.settings.pushReminders, isTrue);
-      await ok.disablePushReminders();
-      expect(ok.settings.pushReminders, isFalse);
-      ok.dispose();
+    final now = DateTime(2026, 10, 23, 8, 30);
+    Task task(String title, {DateTime? due, Priority p = Priority.none, TaskStatus status = TaskStatus.notStarted, List<TaskStep> steps = const []}) =>
+        Task(id: title, title: title, dueDate: due, priority: p, status: status, steps: steps, createdAt: now, updatedAt: now);
+    const on = UserSettings(pushReminders: true);
 
-      final denied = AppController(
-        auth: DemoAuthService(),
-        repositoryFor: (_) => DemoTaskRepository(),
-        push: FakePushService(grant: false),
-      );
+    test('hourly from 9 AM to 9 PM by default, starting the next hour', () {
+      final r = planReminders([task('Read')], on, now, days: 1);
+      expect(r.first.when, DateTime(2026, 10, 23, 9));
+      expect(r.where((x) => x.when.day == 23).map((x) => x.when.hour), [for (var h = 9; h <= 21; h++) h]);
+    });
+
+    test('every N hours, windows across midnight, max pending', () {
+      final every3 = planReminders([task('Read')], on.copyWith(pushEvery: 3, pushFrom: 8, pushTo: 20), now, days: 1);
+      expect(every3.where((x) => x.when.day == 23).map((x) => x.when.hour), [11, 14, 17, 20]);
+      final night = planReminders([task('Read')], on.copyWith(pushFrom: 22, pushTo: 1), now, days: 1);
+      expect(night.map((x) => x.when.hour).take(4), [22, 23, 0, 1]);
+      expect(planReminders([task('Read')], on, now).length, 60);
+    });
+
+    test('nothing when off or nothing open', () {
+      expect(planReminders([task('Read')], const UserSettings(), now), isEmpty);
+      expect(planReminders([task('Done', status: TaskStatus.done)], on, now), isEmpty);
+    });
+
+    test('text leads with what is due and the next step, per day', () {
+      final tasks = [
+        task('Quarterly report', due: DateTime(2026, 10, 23), p: Priority.medium, status: TaskStatus.inProgress,
+            steps: const [TaskStep(id: 'a', title: 'Pull numbers', status: TaskStatus.done), TaskStep(id: 'b', title: 'Draft slides')]),
+        task('Groceries'),
+      ];
+      expect(reminderText(tasks, DateTime(2026, 10, 23)),
+          ('1 due today', 'Next: Draft slides (Quarterly report) · 2 tasks open'));
+      expect(reminderText(tasks, DateTime(2026, 10, 24))!.$1, '1 overdue');
+      expect(reminderText([task('Read')], DateTime(2026, 10, 23)), ('1 task open', 'Next: Read'));
+    });
+
+    test('controller schedules on enable, clears on disable and sign-out; respects a declined prompt', () async {
+      final fake = FakeReminderScheduler();
+      final app = AppController(auth: DemoAuthService(), repositoryFor: (_) => DemoTaskRepository(), reminders: fake);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(await app.enablePushReminders(), isNull);
+      expect(app.settings.pushReminders, isTrue);
+      expect(fake.scheduled, isNotEmpty);
+      await app.disablePushReminders();
+      expect(fake.scheduled, isEmpty);
+      await app.enablePushReminders();
+      await app.signOut();
+      expect(fake.scheduled, isEmpty);
+      app.dispose();
+
+      final denied = AppController(auth: DemoAuthService(), repositoryFor: (_) => DemoTaskRepository(),
+          reminders: FakeReminderScheduler(grant: false));
       await Future<void>.delayed(const Duration(milliseconds: 50));
       await denied.saveSettings(denied.settings.copyWith(pushReminders: false));
-      expect(await denied.enablePushReminders(), contains('blocked'));
+      expect(await denied.enablePushReminders(), contains('Notifications are off'));
       expect(denied.settings.pushReminders, isFalse);
       denied.dispose();
     });

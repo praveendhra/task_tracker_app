@@ -116,12 +116,6 @@ class DemoTaskRepository extends TaskRepository {
   Future<void> saveSettings(UserSettings settings) async => _settings = settings;
 
   @override
-  Future<void> addPushToken(String token) async {}
-
-  @override
-  Future<void> removePushToken(String token) async {}
-
-  @override
   Future<void> deleteAllData() async {
     _tasks.clear();
     _controller.add(_snapshot);

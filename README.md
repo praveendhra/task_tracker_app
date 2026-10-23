@@ -65,14 +65,11 @@ To test: Actions → Daily email → Run workflow, put your email in *force_emai
 
 GitHub pauses scheduled workflows in repos with no activity for 60 days; any push re-enables it.
 
-## Push reminders (iPhone)
+## Task reminders (iPhone)
 
-On iPhone, Settings > **Reminders** turns on push notifications that say what's due and the next step ("1 due today · Next: Draft slides (Quarterly report)"). Tapping one opens the app. Users pick how often (every 1-6 hours) and the hours they may arrive (default every hour, 9 AM to 9 PM, in their time zone). Nothing is sent when nothing is open, and each reminder replaces the previous one. The section is hidden on the web and Android.
+On iPhone, Settings > **Reminders** turns on notifications that say what's due and the next step ("1 due today · Next: Draft slides (Quarterly report)"). Tapping one opens the app. Users pick how often (every 1-6 hours) and the hours they may arrive (default every hour, 9 AM to 9 PM).
 
-- The app stores each device's FCM token in `pushTokens` on `users/{uid}` (removed on turn-off, sign-out and account deletion).
-- `tool/daily_email/send-push.mjs` runs in the same hourly workflow as the email (started by the Cloudflare Worker), using the existing `FIREBASE_SERVICE_ACCOUNT` secret. Dead tokens are cleaned up automatically. Test with Actions > Daily email > Run workflow > *force_push* = your email.
-
-One-time setup: developer.apple.com > Keys > **+** > Apple Push Notifications service > download the .p8, then Firebase console > Project settings > Cloud Messaging > Apple app > **Upload** APNs auth key (Key ID, Team ID `2GDBJ2YQZ9`). Enable **Push Notifications** on the `com.pravii.taskTrackerApp` App ID, then run **iOS release**.
+They're **local notifications**: the app plans them on the phone from the tasks it already has (`lib/models/reminders.dart`) and schedules up to 60 ahead with `flutter_local_notifications`, re-planning a couple of seconds after any task or setting changes. No server, push key or device token is involved, and nothing leaves the phone. Each slot's text is worked out for that day, so a task due today reads as overdue tomorrow. Changes made on another device show up the next time the iPhone app syncs. The section is hidden on the web and Android.
 
 ## Mobile apps
 

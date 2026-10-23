@@ -131,7 +131,7 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 28),
-          if (app.push.supported) ...[
+          if (app.reminders.supported) ...[
             const SectionLabel('Reminders'),
             const _PushRemindersCard(),
             const SizedBox(height: 28),
@@ -348,7 +348,7 @@ class _PushRemindersCardState extends State<_PushRemindersCard> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final s = app.settings;
-    final supported = app.push.supported;
+    final supported = app.reminders.supported;
     final on = s.pushReminders;
     void update(UserSettings next) => app.saveSettings(next);
 
@@ -363,11 +363,11 @@ class _PushRemindersCardState extends State<_PushRemindersCard> {
             secondary: _busy
                 ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
                 : Icon(Icons.notifications_active_outlined, color: scheme.primary),
-            title: const Text('Push reminders'),
+            title: const Text('Task reminders'),
             subtitle: Text(supported
                 ? '${every(s.pushEvery)} from ${formatHour(s.pushFrom)} to ${formatHour(s.pushTo)}: '
                     "what's due and the next step. Tap one to open your tasks."
-                : 'Not available on this device or browser yet.'),
+                : 'Only available on iPhone.'),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           ),
           const Divider(indent: 16, endIndent: 16),
@@ -418,8 +418,9 @@ class _PushRemindersCardState extends State<_PushRemindersCard> {
       Padding(
         padding: const EdgeInsets.fromLTRB(4, 10, 4, 0),
         child: Text(
-          'Uses the time zone above. Nothing is sent when you have no open tasks, '
-          'and each reminder replaces the last one.',
+          'Made on this phone from your tasks, so nothing is sent anywhere. '
+          'They update as you change tasks; open the app now and then to keep them current. '
+          'No reminders when nothing is open.',
           style: theme.textTheme.bodySmall?.copyWith(color: scheme.muted),
         ),
       ),

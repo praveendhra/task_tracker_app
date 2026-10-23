@@ -6,7 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'data/repository.dart';
 import 'models/task.dart';
 import 'models/user_settings.dart';
-import 'platform/push.dart';
+import 'models/reminders.dart';
+import 'platform/reminders.dart';
 import 'platform/timezone.dart';
 
 enum TaskFilter { active, today, upcoming, done, all }
@@ -18,19 +19,18 @@ class AppController extends ChangeNotifier {
   AppController({
     required this.auth,
     required TaskRepository Function(AppUser user) repositoryFor,
-    PushService? push,
+    ReminderScheduler? reminders,
   })  : _repositoryFor = repositoryFor,
-        push = push ?? FakePushService(supported: false) {
+        reminders = reminders ?? FakeReminderScheduler(supported: false) {
     _authSub = auth.userChanges.listen(_onUser);
-    _tokenSub = this.push.tokenRefresh.listen((t) {
-      if (settings.pushReminders) _repo?.addPushToken(t);
-    });
     _loadPrefs();
   }
 
   final AuthService auth;
-  final PushService push;
-  StreamSubscription<String>? _tokenSub;
+
+  /// On-device reminder notifications (iPhone).
+  final ReminderScheduler reminders;
+  Timer? _replanTimer;
   final TaskRepository Function(AppUser user) _repositoryFor;
 
   StreamSubscription<AppUser?>? _authSub;
@@ -86,6 +86,7 @@ class AppController extends ChangeNotifier {
           _tasks = tasks;
           tasksLoaded = true;
           syncError = null;
+          _scheduleReplan();
           notifyListeners();
         }, onError: (Object e) {
           syncError = e;
@@ -294,56 +295,63 @@ class AppController extends ChangeNotifier {
     }
     settings = s;
     notifyListeners();
-    // Keep this device's push token current (tokens rotate, and this may be a
-    // new device for an account that already has reminders on).
-    if (s.pushReminders && push.supported) {
-      final token = await push.currentToken();
-      if (token != null && identical(_repo, repo)) await repo.addPushToken(token);
+    _scheduleReplan();
+  }
+
+  /// Re-plans the phone's reminders from the current tasks, shortly after the
+  /// last change so a burst of edits only reschedules once.
+  void _scheduleReplan() {
+    if (!reminders.supported) return;
+    _replanTimer?.cancel();
+    _replanTimer = Timer(const Duration(seconds: 2), replanReminders);
+  }
+
+  /// Replaces the scheduled reminders (or clears them when turned off).
+  Future<void> replanReminders() async {
+    if (!reminders.supported) return;
+    try {
+      if (user == null || !settings.pushReminders) {
+        await reminders.cancelAll();
+      } else {
+        await reminders.schedule(planReminders(liveTasks, settings, DateTime.now()));
+      }
+    } catch (e) {
+      debugPrint('Could not schedule reminders: $e');
     }
   }
 
-  /// Turns push reminders on: asks for permission, registers this device.
+  /// Turns reminders on: asks for permission, then schedules them.
   /// Returns an error message to show, or null on success.
   Future<String?> enablePushReminders() async {
-    if (!push.supported) return 'Push notifications are not available here.';
-    final token = await push.register();
-    if (token == null) {
-      return 'Notifications are blocked. Allow them for Task Tracker in your '
-          'browser or phone settings, then try again.';
+    if (!reminders.supported) return 'Reminders are only available on iPhone.';
+    if (!await reminders.requestPermission()) {
+      return 'Notifications are off for Task Tracker. Turn them on in '
+          'Settings > Notifications > Task Tracker, then try again.';
     }
-    await _repo?.addPushToken(token);
-    var s = settings.copyWith(pushReminders: true);
-    final tz = detectTimezone();
-    if (s.timezone.isEmpty) s = s.copyWith(timezone: tz ?? 'UTC');
-    await saveSettings(s);
+    await saveSettings(settings.copyWith(pushReminders: true));
+    await replanReminders();
     return null;
   }
 
-  /// Turns reminders off for this account and forgets this device.
   Future<void> disablePushReminders() async {
-    final token = await push.currentToken();
     await saveSettings(settings.copyWith(pushReminders: false));
-    if (token != null) await _repo?.removePushToken(token);
-    await push.unregister();
+    await replanReminders();
   }
 
-  /// Signs out, first detaching this device from reminders so the next
-  /// person to use it doesn't get them.
+  /// Signs out and clears this phone's reminders so the next person to use
+  /// it doesn't get them.
   Future<void> signOut() async {
-    if (settings.pushReminders) {
-      final token = await push.currentToken();
-      if (token != null) {
-        try {
-          await _repo?.removePushToken(token);
-        } catch (_) {}
-      }
-    }
+    _replanTimer?.cancel();
+    try {
+      await reminders.cancelAll();
+    } catch (_) {}
     await auth.signOut();
   }
 
   Future<void> saveSettings(UserSettings s) async {
     settings = s;
     notifyListeners();
+    _scheduleReplan();
     await _repo?.saveSettings(s);
   }
 
@@ -359,7 +367,7 @@ class AppController extends ChangeNotifier {
 
   @override
   void dispose() {
-    _tokenSub?.cancel();
+    _replanTimer?.cancel();
     _authSub?.cancel();
     _taskSub?.cancel();
     super.dispose();

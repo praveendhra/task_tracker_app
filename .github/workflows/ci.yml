@@ -31,8 +31,8 @@ jobs:
       - run: flutter pub get
       - run: flutter analyze --no-fatal-infos
       - run: flutter test
-      - name: Daily email and push reminder tests
-        run: node --test tool/daily_email/email.test.mjs tool/daily_email/push.test.mjs
+      - name: Daily email tests
+        run: node --test tool/daily_email/email.test.mjs
 
       - name: Build web (production)
         run: flutter build web --release --base-href /
