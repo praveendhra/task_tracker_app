@@ -1,0 +1,34 @@
+Archiving com.pravii.taskTrackerApp...
+Upgrading AppFrameworkInfo.plist
+Upgrading Podfile
+ios/Runner/AppDelegate.swift uses the deprecated @UIApplicationMain attribute, updating.
+Adding Swift Package Manager integration...                     
+Xcode is fetching Swift Package Manager dependencies. This may take several minutes...
+Adding Swift Package Manager integration...                        81.0s
+Upgrading Runner.xcscheme
+To ensure your app continues to launch on upcoming iOS versions, UIScene lifecycle support will soon be required. Please see https://flutter.dev/to/uiscene-migration for the migration guide.
+
+The following plugins do not support Swift Package Manager for ios:
+  - flutter_local_notifications
+  - flutter_timezone
+This will become an error in a future version of Flutter. Please contact the plugin maintainers to request Swift Package Manager adoption.
+Running pod install...                                           1,208ms
+Running Xcode build...                                          
+Xcode archive done.                                         142.5s
+✓ Built build/ios/archive/Runner.xcarchive (218.7MB)
+
+[✓] App Settings Validation
+    • Version Number: 1.0.0
+    • Build Number: 105
+    • Display Name: Task Tracker
+    • Deployment Target: 15.0
+    • Bundle Identifier: com.pravii.taskTrackerApp
+
+To update the settings, please refer to https://flutter.dev/to/ios-deploy
+
+Building App Store IPA...                                           8.0s
+✓ Built IPA to build/ios/ipa (30.3MB)
+To upload to the App Store either:
+    1. Drag and drop the "build/ios/ipa/*.ipa" bundle into the Apple Transporter macOS app https://apps.apple.com/us/app/transporter/id1450874784
+    2. Run "xcrun altool --upload-app --type ios -f build/ios/ipa/*.ipa --apiKey your_api_key --apiIssuer your_issuer_id".
+       See "man altool" for details about how to authenticate with the App Store Connect API key.

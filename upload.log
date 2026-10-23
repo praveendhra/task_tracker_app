@@ -1,0 +1,32 @@
+
+[34mPublish "build/ios/ipa/Task Tracker.ipa" to App Store Connect[0m
+App name: Task Tracker
+Bundle identifier: com.pravii.taskTrackerApp
+Certificate expires: 2027-10-22T18:20:41.000+0000
+Distribution type: App Store
+Min OS version: 15.0
+Provisioned devices: N/A
+Provisions all devices: No
+Supported platforms: iPhoneOS
+Version code: 105
+Version: 1.0.0
+
+[34mUpload "build/ios/ipa/Task Tracker.ipa" to App Store Connect[0m
+
+26.40.1 (174001)
+
+2026-10-23 05:03:31.427  INFO: [ContentDelivery.Uploader.78302CD40] 
+UPLOAD SUCCEEDED with no errors
+Delivery UUID: 40a0957f-2757-4437-bddd-576f59482a0b
+Transferred 30154283 bytes in 0.704 seconds (42.8MB/s, 342.459Mbps)
+{
+  "details" : {
+    "delivery-uuid" : "40a0957f-2757-4437-bddd-576f59482a0b",
+    "transferred" : "30154283 bytes in 0.704 seconds (42.8MB/s, 342.459Mbps)"
+  },
+  "os-version" : "Version 26.6.2 (Build 25G83)",
+  "success-message" : "No errors uploading archive at 'build/ios/ipa/Task Tracker.ipa'.",
+  "tool-version" : "26.40.1 (174001)"
+}
+
+[32mNo errors uploading archive at 'build/ios/ipa/Task Tracker.ipa'.[0m
