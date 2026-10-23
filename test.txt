@@ -1,0 +1,44 @@
+00:00 +0: loading /home/runner/work/task_tracker_app/task_tracker_app/test/quick_add_test.dart
+00:00 +0: /home/runner/work/task_tracker_app/task_tracker_app/test/quick_add_test.dart: plain title
+00:00 +1: /home/runner/work/task_tracker_app/task_tracker_app/test/quick_add_test.dart: tags, priority and weekday together
+00:00 +2: /home/runner/work/task_tracker_app/task_tracker_app/test/quick_add_test.dart: relative dates
+00:00 +3: /home/runner/work/task_tracker_app/task_tracker_app/test/quick_add_test.dart: weekdays: bare means the coming one, today counts
+00:00 +4: /home/runner/work/task_tracker_app/task_tracker_app/test/quick_add_test.dart: calendar dates roll into next year once passed
+00:00 +5: /home/runner/work/task_tracker_app/task_tracker_app/test/quick_add_test.dart: priority spellings
+00:00 +6: /home/runner/work/task_tracker_app/task_tracker_app/test/quick_add_test.dart: "due"/"by" before a date is dropped from the title
+00:00 +7: /home/runner/work/task_tracker_app/task_tracker_app/test/quick_add_test.dart: ignored tokens stay in the title
+00:00 +8: /home/runner/work/task_tracker_app/task_tracker_app/test/quick_add_test.dart: matches cover the recognised text
+00:00 +9: /home/runner/work/task_tracker_app/task_tracker_app/test/quick_add_test.dart: step text: only the date is pulled out
+00:00 +10: /home/runner/work/task_tracker_app/task_tracker_app/test/task_test.dart: Task progress follows steps
+00:00 +11: /home/runner/work/task_tracker_app/task_tracker_app/test/task_test.dart: Task ticking the last step completes the task, unticking reopens it
+00:00 +12: /home/runner/work/task_tracker_app/task_tracker_app/test/task_test.dart: Task current step falls back to the first open step
+00:00 +13: /home/runner/work/task_tracker_app/task_tracker_app/test/task_test.dart: Task overdue only when not done
+00:00 +14: /home/runner/work/task_tracker_app/task_tracker_app/test/task_test.dart: Task step due date round-trips as a plain date
+00:00 +15: /home/runner/work/task_tracker_app/task_tracker_app/test/task_test.dart: Task overdue steps are flagged on the task
+00:00 +16: /home/runner/work/task_tracker_app/task_tracker_app/test/task_test.dart: Task step round-trips through a map
+00:00 +17: /home/runner/work/task_tracker_app/task_tracker_app/test/task_test.dart: legacy import maps the original JSON format
+00:00 +18: /home/runner/work/task_tracker_app/task_tracker_app/test/task_test.dart: legacy import tolerates missing fields
+00:00 +19: /home/runner/work/task_tracker_app/task_tracker_app/test/task_test.dart: AppController filters, search and status cycling on demo data
+00:00 +20: /home/runner/work/task_tracker_app/task_tracker_app/test/task_test.dart: Reminders settings round-trip with defaults and clamping
+00:00 +21: /home/runner/work/task_tracker_app/task_tracker_app/test/task_test.dart: Reminders hourly from 9 AM to 9 PM by default
+00:00 +22: /home/runner/work/task_tracker_app/task_tracker_app/test/task_test.dart: Reminders every N hours, windows across midnight, off
+00:00 +23: /home/runner/work/task_tracker_app/task_tracker_app/test/task_test.dart: Reminders controller schedules on enable, clears on disable and sign-out; respects a declined prompt
+00:00 +23 -1: /home/runner/work/task_tracker_app/task_tracker_app/test/task_test.dart: Reminders controller schedules on enable, clears on disable and sign-out; respects a declined prompt [E]
+  A AppController was used after being disposed.
+  Once you have called dispose() on a AppController, it can no longer be used.
+  package:flutter/src/foundation/change_notifier.dart 184:9   ChangeNotifier.debugAssertNotDisposed.<fn>
+  package:flutter/src/foundation/change_notifier.dart 191:6   ChangeNotifier.debugAssertNotDisposed
+  package:flutter/src/foundation/change_notifier.dart 414:27  ChangeNotifier.notifyListeners
+  package:task_tracker_app/app_controller.dart 97:5           AppController._onUser
+  ===== asynchronous gap ===========================
+  dart:async                                                  _CustomZone.registerUnaryCallback
+  package:task_tracker_app/app_controller.dart 70:7           AppController._onUser
+  ===== asynchronous gap ===========================
+  dart:async                                                  _StreamImpl.listen
+  package:task_tracker_app/app_controller.dart 25:33          new AppController
+  test/task_test.dart 155:19                                  main.<fn>.<fn>
+  
+00:00 +23 -1: Some tests failed.
+
+Failing tests:
+  /home/runner/work/task_tracker_app/task_tracker_app/test/task_test.dart: Reminders controller schedules on enable, clears on disable and sign-out; respects a declined prompt
