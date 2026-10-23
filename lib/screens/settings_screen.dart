@@ -365,8 +365,8 @@ class _PushRemindersCardState extends State<_PushRemindersCard> {
                 : Icon(Icons.notifications_active_outlined, color: scheme.primary),
             title: const Text('Task reminders'),
             subtitle: Text(supported
-                ? '${every(s.pushEvery)} from ${formatHour(s.pushFrom)} to ${formatHour(s.pushTo)}: '
-                    "what's due and the next step. Tap one to open your tasks."
+                ? '${every(s.pushEvery)} from ${formatHour(s.pushFrom)} to ${formatHour(s.pushTo)}, '
+                    'a nudge to check your tasks. Tap it to open the app.'
                 : 'Only available on iPhone.'),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           ),
@@ -418,9 +418,8 @@ class _PushRemindersCardState extends State<_PushRemindersCard> {
       Padding(
         padding: const EdgeInsets.fromLTRB(4, 10, 4, 0),
         child: Text(
-          'Made on this phone from your tasks, so nothing is sent anywhere. '
-          'They update as you change tasks; open the app now and then to keep them current. '
-          'No reminders when nothing is open.',
+          'Scheduled on this phone, so nothing is sent anywhere. Repeats every day '
+          'until you turn it off.',
           style: theme.textTheme.bodySmall?.copyWith(color: scheme.muted),
         ),
       ),

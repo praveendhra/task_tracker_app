@@ -1,12 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../models/reminders.dart';
 
-/// Schedules reminders on the device itself. No server or push key is
-/// involved: the app works out the text from the tasks it already has and
-/// re-plans whenever they change.
+/// Repeating "check your tasks" notifications, scheduled on the phone.
+/// No server or push key is involved.
 abstract class ReminderScheduler {
   /// Reminders are iPhone-only for now.
   bool get supported;
@@ -14,8 +15,8 @@ abstract class ReminderScheduler {
   /// Asks for notification permission. True if allowed.
   Future<bool> requestPermission();
 
-  /// Replaces every pending reminder with [reminders].
-  Future<void> schedule(List<PlannedReminder> reminders);
+  /// Replaces every scheduled reminder with [reminders], repeating daily.
+  Future<void> schedule(List<DailyReminder> reminders);
 
   Future<void> cancelAll();
 }
@@ -29,6 +30,12 @@ class LocalReminderScheduler implements ReminderScheduler {
 
   Future<void> _init() async {
     if (_ready) return;
+    tzdata.initializeTimeZones();
+    try {
+      tz.setLocalLocation(tz.getLocation(await FlutterTimezone.getLocalTimezone()));
+    } catch (e) {
+      debugPrint('Using UTC for reminders: $e');
+    }
     await _plugin.initialize(const InitializationSettings(
       iOS: DarwinInitializationSettings(
         requestAlertPermission: false,
@@ -49,7 +56,7 @@ class LocalReminderScheduler implements ReminderScheduler {
   }
 
   @override
-  Future<void> schedule(List<PlannedReminder> reminders) async {
+  Future<void> schedule(List<DailyReminder> reminders) async {
     if (!supported) return;
     await _init();
     await _plugin.cancelAll();
@@ -61,19 +68,20 @@ class LocalReminderScheduler implements ReminderScheduler {
         presentSound: true,
       ),
     );
-    for (var i = 0; i < reminders.length; i++) {
-      final r = reminders[i];
-      // `when` is a local wall-clock time; as an absolute instant in UTC it
-      // fires at exactly that moment, so no time-zone database is needed.
+    final now = tz.TZDateTime.now(tz.local);
+    for (final r in reminders) {
+      var first = tz.TZDateTime(tz.local, now.year, now.month, now.day, r.hour);
+      if (!first.isAfter(now)) first = first.add(const Duration(days: 1));
       await _plugin.zonedSchedule(
-        i,
+        r.hour, // one notification per hour slot
         r.title,
         r.body,
-        tz.TZDateTime.from(r.when.toUtc(), tz.UTC),
+        first,
         details,
         androidScheduleMode: AndroidScheduleMode.inexact,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.time, // every day
       );
     }
   }
@@ -92,12 +100,12 @@ class FakeReminderScheduler implements ReminderScheduler {
   @override
   final bool supported;
   final bool grant;
-  List<PlannedReminder> scheduled = const [];
+  List<DailyReminder> scheduled = const [];
 
   @override
   Future<bool> requestPermission() async => grant;
   @override
-  Future<void> schedule(List<PlannedReminder> reminders) async => scheduled = reminders;
+  Future<void> schedule(List<DailyReminder> reminders) async => scheduled = reminders;
   @override
   Future<void> cancelAll() async => scheduled = const [];
 }

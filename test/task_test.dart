@@ -136,40 +136,18 @@ void main() {
       expect(UserSettings.fromMap(s.copyWith(pushEvery: 3).toMap()).pushEvery, 3);
     });
 
-    final now = DateTime(2026, 10, 23, 8, 30);
-    Task task(String title, {DateTime? due, Priority p = Priority.none, TaskStatus status = TaskStatus.notStarted, List<TaskStep> steps = const []}) =>
-        Task(id: title, title: title, dueDate: due, priority: p, status: status, steps: steps, createdAt: now, updatedAt: now);
     const on = UserSettings(pushReminders: true);
 
-    test('hourly from 9 AM to 9 PM by default, starting the next hour', () {
-      final r = planReminders([task('Read')], on, now, days: 1);
-      expect(r.first.when, DateTime(2026, 10, 23, 9));
-      expect(r.where((x) => x.when.day == 23).map((x) => x.when.hour), [for (var h = 9; h <= 21; h++) h]);
+    test('hourly from 9 AM to 9 PM by default', () {
+      expect(reminderHours(on), [for (var h = 9; h <= 21; h++) h]);
+      expect(dailyReminders(on).first.title, 'Time to check your tasks');
     });
 
-    test('every N hours, windows across midnight, max pending', () {
-      final every3 = planReminders([task('Read')], on.copyWith(pushEvery: 3, pushFrom: 8, pushTo: 20), now, days: 1);
-      expect(every3.where((x) => x.when.day == 23).map((x) => x.when.hour), [11, 14, 17, 20]);
-      final night = planReminders([task('Read')], on.copyWith(pushFrom: 22, pushTo: 1), now, days: 1);
-      expect(night.map((x) => x.when.hour).take(4), [22, 23, 0, 1]);
-      expect(planReminders([task('Read')], on, now).length, 60);
-    });
-
-    test('nothing when off or nothing open', () {
-      expect(planReminders([task('Read')], const UserSettings(), now), isEmpty);
-      expect(planReminders([task('Done', status: TaskStatus.done)], on, now), isEmpty);
-    });
-
-    test('text leads with what is due and the next step, per day', () {
-      final tasks = [
-        task('Quarterly report', due: DateTime(2026, 10, 23), p: Priority.medium, status: TaskStatus.inProgress,
-            steps: const [TaskStep(id: 'a', title: 'Pull numbers', status: TaskStatus.done), TaskStep(id: 'b', title: 'Draft slides')]),
-        task('Groceries'),
-      ];
-      expect(reminderText(tasks, DateTime(2026, 10, 23)),
-          ('1 due today', 'Next: Draft slides (Quarterly report) · 2 tasks open'));
-      expect(reminderText(tasks, DateTime(2026, 10, 24))!.$1, '1 overdue');
-      expect(reminderText([task('Read')], DateTime(2026, 10, 23)), ('1 task open', 'Next: Read'));
+    test('every N hours, windows across midnight, off', () {
+      expect(reminderHours(on.copyWith(pushEvery: 3, pushFrom: 8, pushTo: 20)), [8, 11, 14, 17, 20]);
+      expect(reminderHours(on.copyWith(pushFrom: 22, pushTo: 1)), [22, 23, 0, 1]);
+      expect(reminderHours(on.copyWith(pushFrom: 9, pushTo: 9)), [9]);
+      expect(reminderHours(const UserSettings()), isEmpty);
     });
 
     test('controller schedules on enable, clears on disable and sign-out; respects a declined prompt', () async {

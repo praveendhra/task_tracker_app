@@ -86,7 +86,6 @@ class AppController extends ChangeNotifier {
           _tasks = tasks;
           tasksLoaded = true;
           syncError = null;
-          _scheduleReplan();
           notifyListeners();
         }, onError: (Object e) {
           syncError = e;
@@ -298,8 +297,8 @@ class AppController extends ChangeNotifier {
     _scheduleReplan();
   }
 
-  /// Re-plans the phone's reminders from the current tasks, shortly after the
-  /// last change so a burst of edits only reschedules once.
+  /// Reschedules the phone's reminders shortly after a settings change, so
+  /// flicking through the dropdowns only reschedules once.
   void _scheduleReplan() {
     if (!reminders.supported) return;
     _replanTimer?.cancel();
@@ -313,7 +312,7 @@ class AppController extends ChangeNotifier {
       if (user == null || !settings.pushReminders) {
         await reminders.cancelAll();
       } else {
-        await reminders.schedule(planReminders(liveTasks, settings, DateTime.now()));
+        await reminders.schedule(dailyReminders(settings));
       }
     } catch (e) {
       debugPrint('Could not schedule reminders: $e');

@@ -67,9 +67,9 @@ GitHub pauses scheduled workflows in repos with no activity for 60 days; any pus
 
 ## Task reminders (iPhone)
 
-On iPhone, Settings > **Reminders** turns on notifications that say what's due and the next step ("1 due today · Next: Draft slides (Quarterly report)"). Tapping one opens the app. Users pick how often (every 1-6 hours) and the hours they may arrive (default every hour, 9 AM to 9 PM).
+On iPhone, Settings > **Reminders** turns on a simple nudge, "Time to check your tasks", that opens the app when tapped. Users pick how often (every 1-6 hours) and the hours (default every hour, 9 AM to 9 PM).
 
-They're **local notifications**: the app plans them on the phone from the tasks it already has (`lib/models/reminders.dart`) and schedules up to 60 ahead with `flutter_local_notifications`, re-planning a couple of seconds after any task or setting changes. No server, push key or device token is involved, and nothing leaves the phone. Each slot's text is worked out for that day, so a task due today reads as overdue tomorrow. Changes made on another device show up the next time the iPhone app syncs. The section is hidden on the web and Android.
+They're local notifications scheduled with `flutter_local_notifications`, one per hour slot, repeating daily in the phone's time zone (`lib/models/reminders.dart`, `lib/platform/reminders.dart`). No server, push key or task data is involved, so they never go stale. They're rescheduled when the settings change and cleared on sign-out. The section is hidden on the web and Android.
 
 ## Mobile apps
 
