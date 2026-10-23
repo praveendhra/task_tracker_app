@@ -1,11 +1,6 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 
-/// Web Push needs the project's public VAPID key
-/// (Firebase console > Project settings > Cloud Messaging > Web Push certificates).
-/// CI passes it with --dart-define=FCM_VAPID_KEY=...
-const kVapidKey = String.fromEnvironment('FCM_VAPID_KEY');
-
 /// Gets this device's push token so the server can send reminders.
 abstract class PushService {
   /// Whether push can work on this platform/build at all.
@@ -30,22 +25,17 @@ class FirebasePushService implements PushService {
       : _m = messaging ?? FirebaseMessaging.instance;
   final FirebaseMessaging _m;
 
+  /// Reminders are iPhone-only for now.
   @override
-  bool get supported {
-    if (kIsWeb) return kVapidKey.isNotEmpty;
-    return defaultTargetPlatform == TargetPlatform.iOS ||
-        defaultTargetPlatform == TargetPlatform.android;
-  }
+  bool get supported => !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
 
   Future<String?> _token() async {
     try {
-      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
-        // FCM needs the APNs token first; it can take a moment after launch.
-        for (var i = 0; i < 10 && await _m.getAPNSToken() == null; i++) {
-          await Future<void>.delayed(const Duration(milliseconds: 500));
-        }
+      // FCM needs the APNs token first; it can take a moment after launch.
+      for (var i = 0; i < 10 && await _m.getAPNSToken() == null; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 500));
       }
-      return await _m.getToken(vapidKey: kIsWeb ? kVapidKey : null);
+      return await _m.getToken();
     } catch (e) {
       debugPrint('Push token unavailable: $e');
       return null;

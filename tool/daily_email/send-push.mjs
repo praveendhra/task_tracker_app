@@ -1,10 +1,9 @@
-// Hourly job: sends push reminders ("2 due today · Next: …") to users who
+// Hourly job: sends iPhone push reminders ("2 due today · Next: …") to users who
 // turned them on, within their chosen hours. Run by .github/workflows/daily-email.yml
 // right after the email step.
 //
 // Env:
 //   FIREBASE_SERVICE_ACCOUNT  service-account JSON
-//   APP_URL                   opened when the notification is clicked on the web
 //   FORCE_PUSH                optional: send to this account now, ignoring the schedule
 //   DRY_RUN                   "true" to log without sending or recording
 import { initializeApp, cert } from 'firebase-admin/app';
@@ -14,7 +13,7 @@ import { getMessaging } from 'firebase-admin/messaging';
 import { buildDigest, localDate, normaliseTasks } from './email.mjs';
 import { DEAD_TOKEN_CODES, pushPrefs, pushSlot, reminderFor } from './push.mjs';
 
-const { FIREBASE_SERVICE_ACCOUNT, APP_URL = 'https://task.praveendhra.com', FORCE_PUSH = '', DRY_RUN = '' } = process.env;
+const { FIREBASE_SERVICE_ACCOUNT, FORCE_PUSH = '', DRY_RUN = '' } = process.env;
 const dryRun = DRY_RUN === 'true';
 
 if (!FIREBASE_SERVICE_ACCOUNT) {
@@ -65,14 +64,9 @@ async function main() {
         notification: note,
         data: { route: 'tasks' },
         // Each reminder replaces the previous one instead of stacking up.
-        android: { collapseKey: 'reminder', notification: { tag: 'reminder', color: '#4F46E5' } },
         apns: {
           headers: { 'apns-collapse-id': 'reminder' },
           payload: { aps: { sound: 'default', 'thread-id': 'reminders' } },
-        },
-        webpush: {
-          fcmOptions: { link: APP_URL },
-          notification: { tag: 'reminder', renotify: true, icon: `${APP_URL}/icons/Icon-192.png` },
         },
       });
 

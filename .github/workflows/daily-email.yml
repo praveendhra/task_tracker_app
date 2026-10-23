@@ -58,6 +58,5 @@ jobs:
         run: node send-push.mjs
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          APP_URL: https://task.praveendhra.com
           FORCE_PUSH: ${{ inputs.force_push }}
           DRY_RUN: ${{ inputs.dry_run && 'true' || '' }}

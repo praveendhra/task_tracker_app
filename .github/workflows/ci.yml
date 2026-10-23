@@ -35,7 +35,7 @@ jobs:
         run: node --test tool/daily_email/email.test.mjs tool/daily_email/push.test.mjs
 
       - name: Build web (production)
-        run: flutter build web --release --base-href / --dart-define=FCM_VAPID_KEY=${{ vars.FCM_VAPID_KEY }}
+        run: flutter build web --release --base-href /
 
       - uses: actions/upload-artifact@v4
         with:

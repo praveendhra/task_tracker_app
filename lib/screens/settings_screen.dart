@@ -131,9 +131,11 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 28),
-          const SectionLabel('Reminders'),
-          const _PushRemindersCard(),
-          const SizedBox(height: 28),
+          if (app.push.supported) ...[
+            const SectionLabel('Reminders'),
+            const _PushRemindersCard(),
+            const SizedBox(height: 28),
+          ],
           const SectionLabel('Appearance'),
           Card(
             child: Padding(
