@@ -364,8 +364,18 @@ class AppController extends ChangeNotifier {
     await auth.deleteAccount();
   }
 
+  bool _disposed = false;
+
+  // Async work (e.g. the auth listener after sign-out) can finish after the
+  // controller is gone; ignore those late updates.
+  @override
+  void notifyListeners() {
+    if (!_disposed) super.notifyListeners();
+  }
+
   @override
   void dispose() {
+    _disposed = true;
     _replanTimer?.cancel();
     _authSub?.cancel();
     _taskSub?.cancel();

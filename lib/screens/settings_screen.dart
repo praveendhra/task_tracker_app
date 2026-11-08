@@ -301,6 +301,7 @@ Future<void> confirmDeleteAccount(BuildContext context) async {
     ),
   );
   if (confirmed != true) return;
+  messenger.clearSnackBars();
 
   try {
     await app.deleteAccount(password: needsPassword ? password.text : null);

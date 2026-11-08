@@ -100,6 +100,7 @@ class _HomeScreenState extends State<HomeScreen> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Added "${t.title}"'),
+        persist: false,
         action: SnackBarAction(label: 'Open', onPressed: () => _open(t)),
       ));
     }
@@ -223,6 +224,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(
         content: Text(nowDone ? 'Marked done' : 'Reopened'),
+        persist: false,
         action: SnackBarAction(label: 'Undo', onPressed: () => app.save(before)),
       ));
   }
@@ -235,6 +237,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(
         content: const Text('Archived'),
+        persist: false,
         action: SnackBarAction(label: 'Undo', onPressed: () => app.setArchived(t, false)),
       ));
   }

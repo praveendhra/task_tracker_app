@@ -162,6 +162,7 @@ void main() {
       await app.enablePushReminders();
       await app.signOut();
       expect(fake.scheduled, isEmpty);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
       app.dispose();
 
       final denied = AppController(auth: DemoAuthService(), repositoryFor: (_) => DemoTaskRepository(),
