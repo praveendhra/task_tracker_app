@@ -30,7 +30,19 @@ jobs:
       - run: flutter --version
       - run: flutter pub get
       - run: flutter analyze --no-fatal-infos
-      - run: flutter test
+      - name: Flutter tests
+        run: |
+          set -o pipefail
+          mkdir -p ../test-log
+          flutter test --reporter expanded 2>&1 | tee ../test-log/test.txt
+      - name: Publish test log to ci-test-log branch
+        if: failure() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          cd ../test-log
+          git init -q -b ci-test-log
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -qm "Test log for ${GITHUB_SHA::7}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:ci-test-log
       - name: Daily email tests
         run: node --test tool/daily_email/email.test.mjs
 
