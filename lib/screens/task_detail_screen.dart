@@ -151,6 +151,7 @@ class _TopBar extends StatelessWidget {
             final messenger = ScaffoldMessenger.of(context);
             messenger.showSnackBar(SnackBar(
               content: Text(task.archived ? 'Task restored' : 'Task archived'),
+              persist: false,
               action: SnackBarAction(
                 label: 'Undo',
                 onPressed: () => app.setArchived(task, task.archived),
