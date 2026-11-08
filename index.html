@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Replaced by `flutter build web --base-href`. -->
+  <base href="/">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Task Tracker: break work into steps, see where everything stands, synced across your devices.">
+  <meta name="theme-color" content="#0676E0">
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Tasks">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="favicon.png">
+
+  <title>Task Tracker</title>
+  <link rel="manifest" href="manifest.json">
+
+  <style>
+    html, body { margin: 0; height: 100%; background: #F7F7FB; }
+    @media (prefers-color-scheme: dark) { html, body { background: #111217; } }
+    #boot {
+      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+      transition: opacity .25s ease;
+    }
+    #boot img {
+      width: 64px; height: 64px;
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes pulse { 50% { transform: scale(.92); opacity: .85; } }
+  </style>
+</head>
+<body>
+  <div id="boot" aria-label="Loading Task Tracker">
+    <img src="mark.png" alt="">
+  </div>
+  <script>
+    // Fade out the HTML splash once Flutter has drawn its first frame.
+    window.addEventListener('flutter-first-frame', function () {
+      var boot = document.getElementById('boot');
+      if (!boot) return;
+      boot.style.opacity = '0';
+      setTimeout(function () { boot.remove(); }, 300);
+    });
+  </script>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>
